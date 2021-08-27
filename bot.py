@@ -109,6 +109,33 @@ def get_minting_data(idx):
     unsigs_data = load_json("json/unsigs.json")
     return unsigs_data.get(idx, None)
 
+
+def get_current_owner_address(token_id: str) -> str:
+    url = f"{CARDANOSCAN_URL}/token/{token_id}?tab=topholders"
+
+    session = HTMLSession()
+
+    try:
+        r = session.get(url)
+    except:
+        address = None
+    else:
+        address_str = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/text()")[0]
+        address_id = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/@href")[0]
+        address_id = address_id.rsplit("/")[-1]
+        address = {
+            "id": address_id,
+            "name": address_str
+        }
+    finally:
+        return address
+
+def unsig_exists(number: str) -> bool:
+    if int(number) <= MAX_AMOUNT and int(number) >= 1:
+        return True
+    else:
+        return False
+
 bot = commands.Bot(command_prefix='!', help_command=None)
 
 slash = SlashCommand(bot, sync_commands=True)
@@ -140,15 +167,13 @@ async def on_ready():
         )
     ]
 )
-
 async def unsig(ctx: SlashContext, number: str):
 
     asset_name = get_asset_name_from_idx(int(number))
 
-    if int(number) > MAX_AMOUNT or int(number) < 1:
+    if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 1 and {MAX_AMOUNT}.")
     else:
-
         asset_id = get_asset_id(asset_name)
 
         minting_data = get_minting_data(str(int(number)))
@@ -186,9 +211,47 @@ async def unsig(ctx: SlashContext, number: str):
         print(image_url)
         if image_url:
             embed.set_image(url=image_url)
-        
-        # embed.set_footer(text="Discord Bot by Mar5man")
+
+        embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
  
+        await ctx.send(embed=embed)
+
+@slash.slash(
+    name="owner", 
+    description="shows wallet of unsig with given number", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="Number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def owner(ctx: SlashContext, number: str):
+    asset_name = get_asset_name_from_idx(int(number))
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 1 and {MAX_AMOUNT}.")
+    else:
+        asset_id = get_asset_id(asset_name)
+
+        owner_address_data = get_current_owner_address(asset_id)
+        address = owner_address_data.get("name")
+
+        title = f"{asset_name} is owned by"
+        description = f"`{address}`"
+        color = discord.Colour.blurple()
+
+        embed = discord.Embed(title=title, description=description, color=color)
+
+        name = "This address belongs to wallet..."
+        value = f"{POOL_PM_URL}/{address}/0e14267a"
+        embed.add_field(name=name, value=value, inline=False)
+
+        embed.set_footer(text=f"Data comes from {POOL_PM_URL}")
+
         await ctx.send(embed=embed)
 
 bot.run(TOKEN)
