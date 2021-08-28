@@ -1,6 +1,10 @@
 import os
 import re
 import json
+import time
+import pytz
+from datetime import datetime
+import asyncio
 
 from files_util import load_json
 
@@ -15,13 +19,14 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-
+INVERVAL_LOOP=900
 
 from dotenv import load_dotenv
 load_dotenv() 
 
 TOKEN = os.getenv('BOT_TOKEN')
 POLICY_ID = os.getenv('POLICY_ID')
+SALES_CHANNEL=os.getenv('SALES_CHANNEL')
 GUILD_NAME = os.getenv('GUILD_NAME')
 GUILD_ID = os.getenv('GUILD_ID')
 
@@ -38,12 +43,51 @@ EMOJI_RAINBOW = "\U0001F308"
 EMOJI_BARCHART = "\U0001F4CA"
 EMOJI_CIRCLE_ARROWS = "\U0001F504"
 EMOJI_GEAR = "\u2699"
+EMOJI_CART = "\U0001F6D2"
+EMOJI_MONEYBACK = "\U0001F4B0"
+EMOJI_CALENDAR = "\U0001F4C5"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
     "red": "diff",
     "green": "bash"  
 }
+
+async def get_sales_data(policy_id) -> list:
+    """Get data of sold pioneers from cnft.io marketplace"""
+
+    sales = list()
+
+    URL_TEMPLATE = f"https://api.cnft.io/api/sold?search={policy_id}&sort=date&order=desc&page=<page>&count=250"
+
+    page = 1
+    total_amount = None
+    next_page = True
+    while next_page:
+        
+        try:
+            response = requests.get(URL_TEMPLATE.replace("<page>", str(page))).json()
+        except:
+            return
+        else:
+
+            if not total_amount:
+                total_amount = response.get('found')
+
+            assets = response.get('assets')
+            
+            if assets:
+                sales.extend(assets)
+            else:
+                next_page = False
+
+            print(f"{len(assets)} assets found on sales page {page}")
+            page +=1
+
+    if len(sales) < 0.95 * int(total_amount):
+        return 
+
+    return sales
 
 def get_asset_id(asset_name) -> str:
     ASSET_IDS = load_json("json/asset_ids.json")
@@ -52,6 +96,14 @@ def get_asset_id(asset_name) -> str:
 def get_asset_name_from_idx(idx):
     number_str = str(idx).zfill(5)
     return f"unsig{number_str}"
+
+def get_idx_from_asset_id(asset_id: str) -> int:
+    regex_str = r"(?P<number>[0-9]+)"
+    regex = re.compile(regex_str)
+    match = re.search(regex, asset_id)
+    number = match.group("number")
+    if number:
+        return int(number)
 
 async def get_ipfs_url(asset_id, asset_name):
     metadata = await get_metadata(asset_id)
@@ -71,10 +123,10 @@ async def get_metadata(asset_id):
 async def get_minting_tx_id(asset_id):
     URL=f"{CARDANOSCAN_URL}/token/{asset_id}/?tab=minttransactions"
 
-    session = HTMLSession()
+    asession = AsyncHTMLSession()
 
     try:
-        r = session.get(URL)
+        r = await asession.get(URL)
     except:
         return
     else:
@@ -140,12 +192,31 @@ def unsig_exists(number: str) -> bool:
     else:
         return False
 
+def filter_by_time_interval(assets: list, interval_ms) -> list:
+    timestamp_now = round(time.time() * 1000)
+    
+    filtered = list()
+    for asset in assets:
+        timestamp = asset.get("date")
+        if timestamp >= (timestamp_now - interval_ms):
+            filtered.append(asset)
+
+    return filtered
+
+def timestamp_to_datetime(timestamp):
+    dt = datetime.fromtimestamp(timestamp)
+    return dt
+
+
 bot = commands.Bot(command_prefix='!', help_command=None)
 
 slash = SlashCommand(bot, sync_commands=True)
 
 @bot.event
 async def on_ready():
+    if not fetch_data.is_running():
+        fetch_data.start()
+
     print("guilds", bot.guilds)
 
     bot.guild = discord.utils.find(lambda g: g.name == GUILD_NAME, bot.guilds)
@@ -212,7 +283,6 @@ async def unsig(ctx: SlashContext, number: str):
 
         image_url = await get_ipfs_url(asset_id, asset_name)
 
-        print(image_url)
         if image_url:
             embed.set_image(url=image_url)
 
@@ -259,6 +329,59 @@ async def owner(ctx: SlashContext, number: str):
 
             await ctx.send(embed=embed)
         else:
-            await ctx.send(content=f"Sorry...Currently no data available!")
+            await ctx.send(content=f"Sorry...I can't get the data for `{asset_name}` at the moment!")
+
+async def post_sales(sales):
+    try:
+        channel = discord.utils.get(bot.guild.channels, name=SALES_CHANNEL)
+    except:
+        print(f"Can't find the {SALES_CHANNEL} channel")
+    else:
+        for sale_data in sales:
+            marketplace_name = sale_data.get("assetid")
+
+            asset_idx = get_idx_from_asset_id(marketplace_name)
+            asset_name = get_asset_name_from_idx(asset_idx)
+            asset_id = get_asset_id(asset_name)
+
+            price = sale_data.get("price")
+            price = price/1000000
+            timestamp_ms = sale_data.get("date")
+            date = datetime.utcfromtimestamp(timestamp_ms/1000).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+            title = f"{EMOJI_CART} {asset_name} {EMOJI_CART}"
+            description="minted by unsigned_algorithms"
+            color=discord.Colour.dark_blue()
+
+            embed = discord.Embed(title=title, description=description, color=color)
+
+            embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=f"₳{price:,.0f}", inline=True)
+            embed.add_field(name=f"{EMOJI_CALENDAR} Sold on", value=date, inline=True)
+
+            image_url = await get_ipfs_url(asset_id, asset_name)
+
+            if image_url:
+                embed.set_image(url=image_url)
+
+            embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+            await channel.send(embed=embed)
+
+
+@loop(seconds=INVERVAL_LOOP)
+async def fetch_data():
+    
+    sales_data = await get_sales_data(POLICY_ID)
+    if sales_data:
+        bot.sales = sales_data
+        bot.last_update = datetime.now()
+
+        latest_sales = filter_by_time_interval(sales_data, INVERVAL_LOOP*1000)
+
+        if latest_sales:
+            await asyncio.sleep(2)
+            await post_sales(latest_sales)
+ 
+    print("Updated:", datetime.now()) 
+
 
 bot.run(TOKEN)
