@@ -120,18 +120,22 @@ def get_current_owner_address(token_id: str) -> str:
     except:
         address = None
     else:
-        address_str = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/text()")[0]
-        address_id = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/@href")[0]
-        address_id = address_id.rsplit("/")[-1]
-        address = {
-            "id": address_id,
-            "name": address_str
-        }
+        try:
+            address_str = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/text()")[0]
+            address_id = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/@href")[0]
+            address_id = address_id.rsplit("/")[-1]
+        except:
+            address = None
+        else:
+            address = {
+                "id": address_id,
+                "name": address_str
+            }
     finally:
         return address
 
 def unsig_exists(number: str) -> bool:
-    if int(number) <= MAX_AMOUNT and int(number) >= 1:
+    if int(number) < MAX_AMOUNT and int(number) >= 1:
         return True
     else:
         return False
@@ -238,20 +242,23 @@ async def owner(ctx: SlashContext, number: str):
         asset_id = get_asset_id(asset_name)
 
         owner_address_data = get_current_owner_address(asset_id)
-        address = owner_address_data.get("name")
+        if owner_address_data:
+            address = owner_address_data.get("name")
 
-        title = f"{asset_name} is owned by"
-        description = f"`{address}`"
-        color = discord.Colour.blurple()
+            title = f"{asset_name} is owned by"
+            description = f"`{address}`"
+            color = discord.Colour.blurple()
 
-        embed = discord.Embed(title=title, description=description, color=color)
+            embed = discord.Embed(title=title, description=description, color=color)
 
-        name = "This address belongs to wallet..."
-        value = f"{POOL_PM_URL}/{address}/0e14267a"
-        embed.add_field(name=name, value=value, inline=False)
+            name = "This address belongs to wallet..."
+            value = f"{POOL_PM_URL}/{address}/0e14267a"
+            embed.add_field(name=name, value=value, inline=False)
 
-        embed.set_footer(text=f"Data comes from {POOL_PM_URL}")
+            embed.set_footer(text=f"Data comes from {POOL_PM_URL}")
 
-        await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(content=f"Sorry...Currently no data available!")
 
 bot.run(TOKEN)
