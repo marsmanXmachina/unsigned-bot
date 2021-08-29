@@ -35,6 +35,7 @@ GUILD_IDS=[int(GUILD_ID)]
 CARDANOSCAN_URL = "https://cardanoscan.io"
 BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
 POOL_PM_URL= "https://pool.pm"
+CNFT_URL = "https://cnft.io"
 
 MAX_AMOUNT = 31119
 
@@ -339,9 +340,7 @@ async def post_sales(sales):
     else:
         for sale_data in sales:
             marketplace_name = sale_data.get("assetid")
-
-            asset_idx = get_idx_from_asset_id(marketplace_name)
-            asset_name = get_asset_name_from_idx(asset_idx)
+            asset_name = marketplace_name.replace("_", "")
             asset_id = get_asset_id(asset_name)
 
             price = sale_data.get("price")
@@ -363,7 +362,7 @@ async def post_sales(sales):
             if image_url:
                 embed.set_image(url=image_url)
 
-            embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+            embed.set_footer(text=f"Data comes from {CNFT_URL}")
             await channel.send(embed=embed)
 
 
