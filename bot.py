@@ -37,7 +37,7 @@ BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
 POOL_PM_URL= "https://pool.pm"
 CNFT_URL = "https://cnft.io"
 
-MAX_AMOUNT = 31119
+MAX_AMOUNT = 31118
 
 EMOJI_FRAME="\U0001F5BC"
 EMOJI_RAINBOW = "\U0001F308"
@@ -188,7 +188,7 @@ def get_current_owner_address(token_id: str) -> str:
         return address
 
 def unsig_exists(number: str) -> bool:
-    if int(number) < MAX_AMOUNT and int(number) >= 1:
+    if int(number) <= MAX_AMOUNT and int(number) >= 0:
         return True
     else:
         return False
@@ -244,11 +244,15 @@ async def on_ready():
     ]
 )
 async def unsig(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here...")
+        return  
 
     asset_name = get_asset_name_from_idx(int(number))
 
     if not unsig_exists(number):
-        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 1 and {MAX_AMOUNT}.")
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
         asset_id = get_asset_id(asset_name)
 
@@ -305,10 +309,15 @@ async def unsig(ctx: SlashContext, number: str):
     ]
 )
 async def owner(ctx: SlashContext, number: str):
+
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here...")
+        return 
+
     asset_name = get_asset_name_from_idx(int(number))
 
     if not unsig_exists(number):
-        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 1 and {MAX_AMOUNT}.")
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
         asset_id = get_asset_id(asset_name)
 
