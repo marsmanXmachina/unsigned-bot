@@ -47,6 +47,8 @@ EMOJI_GEAR = "\u2699"
 EMOJI_CART = "\U0001F6D2"
 EMOJI_MONEYBACK = "\U0001F4B0"
 EMOJI_CALENDAR = "\U0001F4C5"
+EMOJI_SHOPPINGBAGS = "\U0001F6CD"
+EMOJI_PERSON = "\U0001F464"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -113,6 +115,10 @@ async def get_ipfs_url(asset_id, asset_name):
         ipfs_url = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
         return ipfs_url
 
+async def get_ipfs_url_from_file(asset_name):
+    pass
+    
+
 async def get_metadata(asset_id):
     tx_id = await get_minting_tx_id(asset_id)
 
@@ -162,6 +168,10 @@ def get_minting_data(idx):
     unsigs_data = load_json("json/unsigs.json")
     return unsigs_data.get(idx, None)
 
+def get_minting_number(asset_name):
+    minting_order = load_json("json/minted.json")
+    number = minting_order.index(asset_name) + 1
+    return number
 
 def get_current_owner_address(token_id: str) -> str:
     url = f"{CARDANOSCAN_URL}/token/{token_id}?tab=topholders"
@@ -230,6 +240,101 @@ async def on_ready():
 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='unsigned_algorithms'))
 
+# @slash.slash(
+#     name="fund", 
+#     description="message to raise funds", 
+#     guild_ids=GUILD_IDS
+# )
+# async def fund(ctx: SlashContext):
+        
+#     title = f"\U0001F378 Unsigned, not stirred \U0001F378"
+#     description="My name is 007. unsig007. What's next? You decide..."
+#     color=discord.Colour.dark_blue()
+
+#     embed = discord.Embed(title=title, description=description, color=color)
+
+#     embed.add_field(name="Vote for the next task with emoji number", value="You can vote for multiple tasks", inline=False)
+#     embed.add_field(name="Task \u0031", value="Feed twitter with unsigs", inline=False)
+#     embed.add_field(name="Task \u0032", value="Alert if #unsig for sale", inline=False)
+#     embed.add_field(name="Task \u0033", value="Notification if potential buyer for own unsig", inline=False)
+#     embed.add_field(name="Task \u0034", value="Data feed from marketplace, e.g. floor prices", inline=False)
+
+#     embed.set_footer(text=f"\nDon't forget to put some ₳ in my pockets!")
+    
+#     await ctx.send(embed=embed)
+
+
+
+@slash.slash(
+    name="sell", 
+    description="offer you unsig for sale", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="number unsig you want to sell",
+            required=True,
+            option_type=3,
+        ),
+        create_option(
+            name="price",
+            description="price you want to sell",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def sell(ctx: SlashContext, number: str, price: str):
+    SELLING_CHANNEL = "selling"
+    if ctx.channel.name != SELLING_CHANNEL:
+        await ctx.send(content=f"Please post you offer in the #{SELLING_CHANNEL} channel.")
+        return
+        
+    asset_name = get_asset_name_from_idx(int(number))
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+    else:
+        asset_id = get_asset_id(asset_name)
+
+        minting_data = get_minting_data(str(int(number)))
+        minting_number = get_minting_number(asset_name)
+
+        title = f"{EMOJI_SHOPPINGBAGS} {asset_name} for sale {EMOJI_SHOPPINGBAGS}"
+        description="Are you interested in this beautiful unsig?"
+        color=discord.Colour.dark_blue()
+
+        embed = discord.Embed(title=title, description=description, color=color)
+
+        embed.add_field(name=f"{EMOJI_PERSON} Seller", value=ctx.author.name, inline=False)
+
+        if not price:
+            price_str = "???"
+        else:
+            try:
+                price = float(price)
+            except:
+                await ctx.send(content=f"Please enter price for sale!")
+                return
+            else:
+                price_str = f"₳{price:,.0f}"
+
+        embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=price_str, inline=True)
+
+        embed.add_field(name="Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
+
+        total_props = minting_data.get("num_props")
+        embed.add_field(name="Total properties", value=f"This unsig has **{total_props}** properties", inline=False)
+
+        image_url = await get_ipfs_url(asset_id, asset_name)
+
+        if image_url:
+            embed.set_image(url=image_url)
+
+        embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+ 
+        await ctx.send(embed=embed)
+
 @slash.slash(
     name="unsig", 
     description="show unsig with given number", 
@@ -247,8 +352,8 @@ async def unsig(ctx: SlashContext, number: str):
         
     if ctx.channel.name == "general":
         await ctx.send(content=f"I'm not allowed to post here...")
-        return  
-
+        return
+        
     asset_name = get_asset_name_from_idx(int(number))
 
     if not unsig_exists(number):
@@ -257,12 +362,15 @@ async def unsig(ctx: SlashContext, number: str):
         asset_id = get_asset_id(asset_name)
 
         minting_data = get_minting_data(str(int(number)))
+        minting_number = get_minting_number(asset_name)
 
         title = f"{asset_name}"
         description="minted by unsigned_algorithms"
         color=discord.Colour.dark_blue()
 
         embed = discord.Embed(title=title, description=description, color=color)
+
+        embed.add_field(name="Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
 
         total_props = minting_data.get("num_props")
         embed.add_field(name="Total properties", value=f"Your unsig has **{total_props}** properties", inline=False)
@@ -311,7 +419,7 @@ async def unsig(ctx: SlashContext, number: str):
 async def owner(ctx: SlashContext, number: str):
 
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here...d")
         return 
 
     asset_name = get_asset_name_from_idx(int(number))
