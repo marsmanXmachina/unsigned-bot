@@ -6,6 +6,8 @@ import pytz
 from datetime import datetime
 import asyncio
 
+from operator import itemgetter
+
 from files_util import load_json
 
 import requests
@@ -49,11 +51,18 @@ EMOJI_MONEYBACK = "\U0001F4B0"
 EMOJI_CALENDAR = "\U0001F4C5"
 EMOJI_SHOPPINGBAGS = "\U0001F6CD"
 EMOJI_PERSON = "\U0001F464"
+EMOJI_NUMBERS = "\U0001F522"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
     "red": "diff",
     "green": "bash"  
+}
+
+INVERVALS_IN_DAYS = {
+    "day": 1,
+    "week": 7,
+    "month": 30,
 }
 
 async def get_sales_data(policy_id) -> list:
@@ -214,9 +223,17 @@ def filter_by_time_interval(assets: list, interval_ms) -> list:
 
     return filtered
 
-def timestamp_to_datetime(timestamp):
-    dt = datetime.fromtimestamp(timestamp)
+def timestamp_to_datetime(timestamp_ms):
+    dt = datetime.utcfromtimestamp(timestamp_ms/1000)
     return dt
+
+def filter_sales_by_asset(sales, asset_name):
+    return [sale for sale in sales if sale.get("assetid").replace("_","") == asset_name]
+
+def sort_sales_by_date(sales, descending=False):
+    return sorted(sales, key=itemgetter('date'), reverse=descending)
+
+
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
@@ -239,6 +256,26 @@ async def on_ready():
         )
 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='unsigned_algorithms'))
+
+def embed_minting_order(embed, minting_number):
+    pass
+
+def embed_sales(embed, sales):
+
+    sales_value=""
+
+    for sale in sales:
+        asset_name = sale.get("assetid").replace("_", "")
+        price = sale.get('price')/1000000
+        timestamp_ms = sale.get('date')
+        date = datetime.utcfromtimestamp(timestamp_ms/1000).date()
+
+        row = f"sold on **{date}** for **₳{price:,.0f}**\n"
+        sales_value += row
+
+    embed.add_field(name=f"{EMOJI_SHOPPINGBAGS} Past sales", value=sales_value, inline=False)
+
+
 
 # @slash.slash(
 #     name="fund", 
@@ -370,7 +407,14 @@ async def unsig(ctx: SlashContext, number: str):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        embed.add_field(name="Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
+        embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
+
+        if bot.sales:
+            past_sales = filter_sales_by_asset(bot.sales, asset_name)
+            sales_by_date = sort_sales_by_date(past_sales, descending=True)
+
+            if past_sales:
+                embed_sales(embed, sales_by_date)
 
         total_props = minting_data.get("num_props")
         embed.add_field(name="Total properties", value=f"Your unsig has **{total_props}** properties", inline=False)
@@ -491,11 +535,11 @@ async def fetch_data():
         bot.sales = sales_data
         bot.last_update = datetime.now()
 
-        latest_sales = filter_by_time_interval(sales_data, INVERVAL_LOOP*1000)
+        # latest_sales = filter_by_time_interval(sales_data, INVERVAL_LOOP*1000)
 
-        if latest_sales:
-            await asyncio.sleep(2)
-            await post_sales(latest_sales)
+        # if latest_sales:
+        #     await asyncio.sleep(2)
+        #     await post_sales(latest_sales)
  
     print("Updated:", datetime.now()) 
 
