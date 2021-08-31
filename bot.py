@@ -535,11 +535,11 @@ async def fetch_data():
         bot.sales = sales_data
         bot.last_update = datetime.now()
 
-        # latest_sales = filter_by_time_interval(sales_data, INVERVAL_LOOP*1000)
+        latest_sales = filter_by_time_interval(sales_data, INVERVAL_LOOP*1000)
 
-        # if latest_sales:
-        #     await asyncio.sleep(2)
-        #     await post_sales(latest_sales)
+        if latest_sales:
+            await asyncio.sleep(2)
+            await post_sales(latest_sales)
  
     print("Updated:", datetime.now()) 
 
