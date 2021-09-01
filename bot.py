@@ -99,8 +99,8 @@ async def get_sales_data(policy_id) -> list:
             print(f"{len(assets)} assets found on sales page {page}")
             page +=1
 
-    if len(sales) < 0.95 * int(total_amount):
-        return 
+    # if len(sales) < 0.95 * int(total_amount):
+    #     return 
 
     return sales
 
