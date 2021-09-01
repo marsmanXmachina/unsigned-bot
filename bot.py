@@ -240,6 +240,7 @@ def sort_sales_by_date(sales, descending=False):
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
+bot.sales = None
 
 slash = SlashCommand(bot, sync_commands=True)
 
@@ -529,7 +530,9 @@ async def post_sales(sales):
 
             embed.set_footer(text=f"Data comes from {CNFT_URL}")
             
-            await channel.send(embed=embed)
+            message = await channel.send(embed=embed)
+            await message.publish()
+
 
 async def get_last_messages(channel):
     last_messages = list()
@@ -543,7 +546,6 @@ async def get_last_messages(channel):
             last_messages.append(message)
     
     return last_messages
-
 
 async def publish_last_messages():
     channel = bot.get_channel(SALES_CHANNEL_ID)
@@ -567,8 +569,6 @@ async def fetch_data():
         if latest_sales:
             await asyncio.sleep(2)
             await post_sales(latest_sales)
-    
-    await publish_last_messages()
  
     print("Updated:", datetime.now()) 
 
