@@ -35,6 +35,8 @@ GUILD_ID = os.getenv('GUILD_ID')
 
 GUILD_IDS=[int(GUILD_ID)]
 
+DISCORD_API_URL = "https://discord/api/v9"
+
 CARDANOSCAN_URL = "https://cardanoscan.io"
 BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
 POOL_PM_URL= "https://pool.pm"
@@ -499,7 +501,7 @@ async def post_sales(sales):
     try:
         channel = bot.get_channel(SALES_CHANNEL_ID)
     except:
-        print(f"Can't find the {SALES_CHANNEL} channel")
+        print(f"Can't find the sales feed channel")
     else:
         for sale_data in sales:
             marketplace_name = sale_data.get("assetid")
@@ -526,12 +528,35 @@ async def post_sales(sales):
                 embed.set_image(url=image_url)
 
             embed.set_footer(text=f"Data comes from {CNFT_URL}")
+            
             await channel.send(embed=embed)
+
+async def get_last_messages(channel):
+    last_messages = list()
+
+    async for message in channel.history(limit=15):
+        now = datetime.utcnow()
+        time_diff = now - message.created_at
+        time_diff_seconds = time_diff.total_seconds()
+        
+        if time_diff_seconds <= INVERVAL_LOOP:
+            last_messages.append(message)
+    
+    return last_messages
+
+
+async def publish_last_messages():
+    channel = bot.get_channel(SALES_CHANNEL_ID)
+
+    last_messages = await get_last_messages(channel)
+    if last_messages:
+        for message in last_messages:
+            await message.publish()
 
 
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
-
+    
     sales_data = await get_sales_data(POLICY_ID)
     if sales_data:
         bot.sales = sales_data
@@ -542,6 +567,8 @@ async def fetch_data():
         if latest_sales:
             await asyncio.sleep(2)
             await post_sales(latest_sales)
+    
+    await publish_last_messages()
  
     print("Updated:", datetime.now()) 
 
