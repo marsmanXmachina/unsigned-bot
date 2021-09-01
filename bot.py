@@ -29,6 +29,7 @@ load_dotenv()
 TOKEN = os.getenv('BOT_TOKEN')
 POLICY_ID = os.getenv('POLICY_ID')
 SALES_CHANNEL=os.getenv('SALES_CHANNEL')
+SALES_CHANNEL_ID = int(os.getenv('SALES_CHANNEL_ID'))
 GUILD_NAME = os.getenv('GUILD_NAME')
 GUILD_ID = os.getenv('GUILD_ID')
 
@@ -260,15 +261,16 @@ async def on_ready():
 def embed_minting_order(embed, minting_number):
     pass
 
+
+
 def embed_sales(embed, sales):
 
     sales_value=""
 
     for sale in sales:
-        asset_name = sale.get("assetid").replace("_", "")
         price = sale.get('price')/1000000
         timestamp_ms = sale.get('date')
-        date = datetime.utcfromtimestamp(timestamp_ms/1000).date()
+        date = timestamp_to_datetime(timestamp_ms).date()
 
         row = f"sold on **{date}** for **₳{price:,.0f}**\n"
         sales_value += row
@@ -495,7 +497,7 @@ async def owner(ctx: SlashContext, number: str):
 
 async def post_sales(sales):
     try:
-        channel = discord.utils.get(bot.guild.channels, name=SALES_CHANNEL)
+        channel = bot.get_channel(SALES_CHANNEL_ID)
     except:
         print(f"Can't find the {SALES_CHANNEL} channel")
     else:
@@ -529,7 +531,7 @@ async def post_sales(sales):
 
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
-    
+
     sales_data = await get_sales_data(POLICY_ID)
     if sales_data:
         bot.sales = sales_data
