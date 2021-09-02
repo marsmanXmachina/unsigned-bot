@@ -8,7 +8,7 @@ import asyncio
 
 from operator import itemgetter
 
-from files_util import load_json
+from files_util import load_json, save_json
 
 import requests
 from requests_html import HTMLSession, AsyncHTMLSession
@@ -83,7 +83,7 @@ async def get_sales_data(policy_id) -> list:
         try:
             response = requests.get(URL_TEMPLATE.replace("<page>", str(page))).json()
         except:
-            return
+            return sales
         else:
 
             if not total_amount:
@@ -98,9 +98,6 @@ async def get_sales_data(policy_id) -> list:
 
             print(f"{len(assets)} assets found on sales page {page}")
             page +=1
-
-    # if len(sales) < 0.95 * int(total_amount):
-    #     return 
 
     return sales
 
@@ -236,11 +233,12 @@ def filter_sales_by_asset(sales, asset_name):
 def sort_sales_by_date(sales, descending=False):
     return sorted(sales, key=itemgetter('date'), reverse=descending)
 
-
+def filter_new_sales(past_sales, new_sales):
+    return [sale for sale in new_sales if sale not in past_sales]
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
-bot.sales = None
+bot.sales = load_json("json/sales.json")
 
 slash = SlashCommand(bot, sync_commands=True)
 
@@ -561,14 +559,16 @@ async def fetch_data():
     
     sales_data = await get_sales_data(POLICY_ID)
     if sales_data:
-        bot.sales = sales_data
-        bot.last_update = datetime.now()
+        new_sales = filter_new_sales(bot.sales, sales_data)
+        if new_sales:
+            bot.sales.extend(new_sales)
+            save_json("json/sales.json", bot.sales)
+            bot.last_update = datetime.now()
 
-        latest_sales = filter_by_time_interval(sales_data, INVERVAL_LOOP*1000)
+            # new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 6)
 
-        if latest_sales:
             await asyncio.sleep(2)
-            await post_sales(latest_sales)
+            await post_sales(new_sales)
  
     print("Updated:", datetime.now()) 
 
