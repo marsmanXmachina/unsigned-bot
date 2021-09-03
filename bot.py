@@ -73,7 +73,7 @@ async def get_sales_data(policy_id) -> list:
 
     sales = list()
 
-    URL_TEMPLATE = f"https://api.cnft.io/api/sold?search={policy_id}&sort=date&order=desc&page=<page>&count=250"
+    url_template = f"https://api.cnft.io/api/sold?search={policy_id}&sort=date&order=desc&page=<page>&count=250"
 
     page = 1
     total_amount = None
@@ -81,7 +81,7 @@ async def get_sales_data(policy_id) -> list:
     while next_page:
         
         try:
-            response = requests.get(URL_TEMPLATE.replace("<page>", str(page))).json()
+            response = requests.get(url_template.replace("<page>", str(page))).json()
         except:
             return sales
         else:
@@ -102,20 +102,35 @@ async def get_sales_data(policy_id) -> list:
     return sales
 
 def get_asset_id(asset_name) -> str:
-    ASSET_IDS = load_json("json/asset_ids.json")
-    return ASSET_IDS.get(asset_name, None)
+    asset_ids = load_json("json/asset_ids.json")
+    return asset_ids.get(asset_name, None)
 
-def get_asset_name_from_idx(idx):
-    number_str = str(idx).zfill(5)
-    return f"unsig{number_str}"
+def get_asset_name_from_idx(idx: str):
+    try:
+        index = int(idx)
+    except:
+        return f"unsig{idx}"
+    else:
+        number_str = str(index).zfill(5)
+        return f"unsig{number_str}"
 
-def get_idx_from_asset_id(asset_id: str) -> int:
+def get_idx_from_asset_name(asset_name: str) -> int:
     regex_str = r"(?P<number>[0-9]+)"
     regex = re.compile(regex_str)
-    match = re.search(regex, asset_id)
+    match = re.search(regex, asset_name)
     number = match.group("number")
     if number:
         return int(number)
+
+def get_asset_name_from_minting_order(idx:str):
+    minting_order = load_json("json/minted.json")
+    try:
+        idx = int(idx)
+        asset_name = minting_order[idx-1]
+    except:
+        return
+    else:
+        return asset_name
 
 async def get_ipfs_url(asset_id, asset_name):
     metadata = await get_metadata(asset_id)
@@ -127,7 +142,6 @@ async def get_ipfs_url(asset_id, asset_name):
 async def get_ipfs_url_from_file(asset_name):
     pass
     
-
 async def get_metadata(asset_id):
     tx_id = await get_minting_tx_id(asset_id)
 
@@ -173,7 +187,7 @@ def get_ipfs_hash(metadata, asset_id, asset_name):
         if image_url:   
             return image_url.rsplit("/")[-1]
 
-def get_minting_data(idx):
+def get_minting_data(idx:str):
     unsigs_data = load_json("json/unsigs.json")
     return unsigs_data.get(idx, None)
 
@@ -237,6 +251,7 @@ def filter_new_sales(past_sales, new_sales):
     return [sale for sale in new_sales if sale not in past_sales]
 
 
+
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
 
@@ -260,9 +275,7 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='unsigned_algorithms'))
 
 def embed_minting_order(embed, minting_number):
-    pass
-
-
+    embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
 
 def embed_sales(embed, sales):
 
@@ -278,7 +291,29 @@ def embed_sales(embed, sales):
 
     embed.add_field(name=f"{EMOJI_SHOPPINGBAGS} Past sales", value=sales_value, inline=False)
 
+def embed_num_props(embed, minting_data):
+    total_props = minting_data.get("num_props")
+    embed.add_field(name="Total properties", value=f"This unsig has **{total_props}** properties", inline=False)
 
+def embed_props(embed, minting_data):
+    properties = minting_data.get("properties")
+
+    colors = properties.get("colors")
+    multipliers = properties.get("multipliers")
+    distributions = properties.get("distributions")
+    rotations = properties.get("rotations")
+    
+    colors_str = ", ".join([c for c in colors])
+    embed.add_field(name=f"{EMOJI_RAINBOW} Colors {EMOJI_RAINBOW}", value=f"`{colors_str}`", inline=False)
+
+    multipliers_str = ", ".join([str(m) for m in multipliers])
+    embed.add_field(name=f"{EMOJI_GEAR} Multipliers {EMOJI_GEAR}", value=f"`{multipliers_str}`", inline=False)
+
+    distributions_str = ", ".join([d for d in distributions])
+    embed.add_field(name=f"{EMOJI_BARCHART} Distributions {EMOJI_BARCHART}", value=f"`{distributions_str}`", inline=False)
+
+    rotations_str = ", ".join([str(r) for r in rotations])
+    embed.add_field(name=f"{EMOJI_CIRCLE_ARROWS} Rotations {EMOJI_CIRCLE_ARROWS}", value=f"`{rotations_str}`", inline=False)
 
 # @slash.slash(
 #     name="fund", 
@@ -330,14 +365,14 @@ async def sell(ctx: SlashContext, number: str, price: str):
         await ctx.send(content=f"Please post you offer in the #{SELLING_CHANNEL} channel.")
         return
         
-    asset_name = get_asset_name_from_idx(int(number))
+    asset_name = get_asset_name_from_idx(number)
 
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
         asset_id = get_asset_id(asset_name)
 
-        minting_data = get_minting_data(str(int(number)))
+        minting_data = get_minting_data(number)
         minting_number = get_minting_number(asset_name)
 
         title = f"{EMOJI_SHOPPINGBAGS} {asset_name} for sale {EMOJI_SHOPPINGBAGS}"
@@ -361,13 +396,11 @@ async def sell(ctx: SlashContext, number: str, price: str):
 
         embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=price_str, inline=True)
 
-        embed.add_field(name="Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
+        embed_minting_order(embed, minting_number)
 
-        total_props = minting_data.get("num_props")
-        embed.add_field(name="Total properties", value=f"This unsig has **{total_props}** properties", inline=False)
+        embed_num_props(embed, minting_data)
 
         image_url = await get_ipfs_url(asset_id, asset_name)
-
         if image_url:
             embed.set_image(url=image_url)
 
@@ -393,15 +426,16 @@ async def unsig(ctx: SlashContext, number: str):
     if ctx.channel.name == "general":
         await ctx.send(content=f"I'm not allowed to post here...")
         return
-        
-    asset_name = get_asset_name_from_idx(int(number))
+
+
+    asset_name = get_asset_name_from_idx(number)
 
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
         asset_id = get_asset_id(asset_name)
 
-        minting_data = get_minting_data(str(int(number)))
+        minting_data = get_minting_data(number)
         minting_number = get_minting_number(asset_name)
 
         title = f"{asset_name}"
@@ -410,8 +444,8 @@ async def unsig(ctx: SlashContext, number: str):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
-
+        embed_minting_order(embed, minting_number)
+       
         if bot.sales:
             past_sales = filter_sales_by_asset(bot.sales, asset_name)
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
@@ -419,32 +453,75 @@ async def unsig(ctx: SlashContext, number: str):
             if past_sales:
                 embed_sales(embed, sales_by_date)
 
-        total_props = minting_data.get("num_props")
-        embed.add_field(name="Total properties", value=f"Your unsig has **{total_props}** properties", inline=False)
+        embed_num_props(embed, minting_data)
 
-        properties = minting_data.get("properties")
-
-        colors = properties.get("colors")
-        multipliers = properties.get("multipliers")
-        distributions = properties.get("distributions")
-        rotations = properties.get("rotations")
-        
-        colors_str = ", ".join([c for c in colors])
-        embed.add_field(name=f"{EMOJI_RAINBOW} Colors {EMOJI_RAINBOW}", value=f"`{colors_str}`", inline=False)
-
-        multipliers_str = ", ".join([str(m) for m in multipliers])
-        embed.add_field(name=f"{EMOJI_GEAR} Multipliers {EMOJI_GEAR}", value=f"`{multipliers_str}`", inline=False)
-
-        distributions_str = ", ".join([d for d in distributions])
-        embed.add_field(name=f"{EMOJI_BARCHART} Distributions {EMOJI_BARCHART}", value=f"`{distributions_str}`", inline=False)
-
-        rotations_str = ", ".join([str(r) for r in rotations])
-        embed.add_field(name=f"{EMOJI_CIRCLE_ARROWS} Rotations {EMOJI_CIRCLE_ARROWS}", value=f"`{rotations_str}`", inline=False)
+        embed_props(embed, minting_data)
 
         image_url = await get_ipfs_url(asset_id, asset_name)
 
         if image_url:
             embed.set_image(url=image_url)
+
+
+        embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+ 
+        await ctx.send(embed=embed)
+
+@slash.slash(
+    name="minted", 
+    description="show unsig with given minting order", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="index",
+            description="position of minting order",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def minted(ctx: SlashContext, index: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here...")
+        return
+        
+    asset_name = get_asset_name_from_minting_order(index)
+
+    if not asset_name:
+        await ctx.send(content=f"Unsig with minting order {index} does not exist!\nPlease enter number between 1 and {MAX_AMOUNT+1}.")
+    else:
+        asset_id = get_asset_id(asset_name)
+
+        number = str(get_idx_from_asset_name(asset_name))
+
+        minting_data = get_minting_data(number)
+        minting_number = get_minting_number(asset_name)
+
+        title = f"{asset_name}"
+        description="minted by unsigned_algorithms"
+        color=discord.Colour.dark_blue()
+
+        embed = discord.Embed(title=title, description=description, color=color)
+
+        embed_minting_order(embed, minting_number)
+       
+        if bot.sales:
+            past_sales = filter_sales_by_asset(bot.sales, asset_name)
+            sales_by_date = sort_sales_by_date(past_sales, descending=True)
+
+            if past_sales:
+                embed_sales(embed, sales_by_date)
+
+        embed_num_props(embed, minting_data)
+
+        embed_props(embed, minting_data)
+
+        image_url = await get_ipfs_url(asset_id, asset_name)
+
+        if image_url:
+            embed.set_image(url=image_url)
+
 
         embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
  
@@ -469,7 +546,7 @@ async def owner(ctx: SlashContext, number: str):
         await ctx.send(content=f"I'm not allowed to post here...d")
         return 
 
-    asset_name = get_asset_name_from_idx(int(number))
+    asset_name = get_asset_name_from_idx(number)
 
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
@@ -565,7 +642,7 @@ async def fetch_data():
             save_json("json/sales.json", bot.sales)
             bot.last_update = datetime.now()
 
-            # new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 6)
+            new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
             await asyncio.sleep(2)
             await post_sales(new_sales)
