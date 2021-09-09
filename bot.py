@@ -21,10 +21,15 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
+# from draw import gen_evolution, delete_image_files
+
 INVERVAL_LOOP=900
 
 from dotenv import load_dotenv
 load_dotenv() 
+
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGE_PATH = f"{FILE_DIR}/img"
 
 TOKEN = os.getenv('BOT_TOKEN')
 POLICY_ID = os.getenv('POLICY_ID')
@@ -55,6 +60,7 @@ EMOJI_CALENDAR = "\U0001F4C5"
 EMOJI_SHOPPINGBAGS = "\U0001F6CD"
 EMOJI_PERSON = "\U0001F464"
 EMOJI_NUMBERS = "\U0001F522"
+EMOJI_PALETTE = "\U0001F3A8"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -73,15 +79,24 @@ async def get_sales_data(policy_id) -> list:
 
     sales = list()
 
-    url_template = f"https://api.cnft.io/api/sold?search={policy_id}&sort=date&order=desc&page=<page>&count=250"
+    url = "https://api.cnft.io/market/listings"
 
-    page = 1
+    payload = {
+        "search": policy_id,
+        "sort": "date",
+        "order": "desc",
+        "page": 1,
+        "verified": "true",
+        "sold": "true",
+        "count": 200
+    }
+
     total_amount = None
     next_page = True
     while next_page:
         
         try:
-            response = requests.get(url_template.replace("<page>", str(page))).json()
+            response = requests.post(url, payload).json()
         except:
             return sales
         else:
@@ -96,10 +111,23 @@ async def get_sales_data(policy_id) -> list:
             else:
                 next_page = False
 
-            print(f"{len(assets)} assets found on sales page {page}")
-            page +=1
+            print(f"{len(assets)} assets found on sales page {payload['page']}")
+            # payload["page"] += 1
+            return sales
+    
 
-    return sales
+def extract_sales_data(assets_data):
+    sales_data = list()
+
+    for asset in assets_data:
+        sales_data.append({
+            "assetid": asset.get("metadata").get("name"),
+            "date": asset.get("dateSold"),
+            "unit": asset.get("unit"),
+            "price": asset.get("price")
+        })
+    
+    return sales_data
 
 def get_asset_id(asset_name) -> str:
     asset_ids = load_json("json/asset_ids.json")
@@ -467,6 +495,63 @@ async def unsig(ctx: SlashContext, number: str):
  
         await ctx.send(embed=embed)
 
+# @slash.slash(
+#     name="evo", 
+#     description="show composition of unsig with given number", 
+#     guild_ids=GUILD_IDS,
+#     options=[
+#         create_option(
+#             name="number",
+#             description="Number of your unsig",
+#             required=True,
+#             option_type=3,
+#         ),
+#         create_option(
+#             name="extended",
+#             description="Show unsig ingredients",
+#             required=False,
+#             option_type=4,
+#             choices=[
+#                 create_choice(name="show", value=True),
+#                 create_choice(name="don't show", value=False),
+#             ]
+#         ),
+
+#     ]
+# )
+# async def evo(ctx: SlashContext, number: str, extended: bool = False):
+        
+#     if ctx.channel.name == "general":
+#         await ctx.send(content=f"I'm not allowed to post here...")
+#         return
+
+#     asset_name = get_asset_name_from_idx(number)
+
+#     if not unsig_exists(number):
+#         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+#     else:
+
+#         title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
+#         description="Explore the composition of your unsig..."
+#         color=discord.Colour.dark_blue()
+
+#         embed = discord.Embed(title=title, description=description, color=color)
+
+#         try:
+#             image_path = f"img/evolution_{number}.png"
+            
+#             await gen_evolution(number, show_single_layers=extended)
+
+#             image_file = discord.File(image_path, filename="image.png")
+#             if image_file:
+#                 embed.set_image(url="attachment://image.png")
+#             delete_image_files(IMAGE_PATH)
+#         except:
+#              await ctx.send(content=f"I can't generate the composition of your unsig.")
+#              return
+#         else:
+#             await ctx.send(file=image_file, embed=embed)
+
 @slash.slash(
     name="minted", 
     description="show unsig with given minting order", 
@@ -634,7 +719,8 @@ async def publish_last_messages():
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
     
-    sales_data = await get_sales_data(POLICY_ID)
+    assets_data = await get_sales_data(POLICY_ID)
+    sales_data = extract_sales_data(assets_data)
     if sales_data:
         new_sales = filter_new_sales(bot.sales, sales_data)
         if new_sales:
