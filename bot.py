@@ -21,7 +21,7 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-# from draw import gen_evolution, delete_image_files
+from draw import gen_evolution, delete_image_files
 
 INVERVAL_LOOP=900
 
@@ -112,9 +112,9 @@ async def get_sales_data(policy_id) -> list:
                 next_page = False
 
             print(f"{len(assets)} assets found on sales page {payload['page']}")
-            payload["page"] += 1
+            # payload["page"] += 1
 
-    return sales
+            return sales
     
 
 def extract_sales_data(assets_data):
@@ -496,62 +496,61 @@ async def unsig(ctx: SlashContext, number: str):
  
         await ctx.send(embed=embed)
 
-# @slash.slash(
-#     name="evo", 
-#     description="show composition of unsig with given number", 
-#     guild_ids=GUILD_IDS,
-#     options=[
-#         create_option(
-#             name="number",
-#             description="Number of your unsig",
-#             required=True,
-#             option_type=3,
-#         ),
-#         create_option(
-#             name="extended",
-#             description="Show unsig ingredients",
-#             required=False,
-#             option_type=4,
-#             choices=[
-#                 create_choice(name="show", value=True),
-#                 create_choice(name="don't show", value=False),
-#             ]
-#         ),
-
-#     ]
-# )
-# async def evo(ctx: SlashContext, number: str, extended: bool = False):
+@slash.slash(
+    name="evo", 
+    description="show composition of unsig with given number", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="Number of your unsig",
+            required=True,
+            option_type=3,
+        )
+        # create_option(
+        #     name="extended",
+        #     description="Show unsig ingredients",
+        #     required=False,
+        #     option_type=4,
+        #     choices=[
+        #         create_choice(name="show", value=True),
+        #         create_choice(name="don't show", value=False),
+        #     ]
+        # ),
+    ]
+)
+async def evo(ctx: SlashContext, number: str):
         
-#     if ctx.channel.name == "general":
-#         await ctx.send(content=f"I'm not allowed to post here...")
-#         return
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here...")
+        return
 
-#     asset_name = get_asset_name_from_idx(number)
+    asset_name = get_asset_name_from_idx(number)
 
-#     if not unsig_exists(number):
-#         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
-#     else:
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+    else:
 
-#         title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
-#         description="Explore the composition of your unsig..."
-#         color=discord.Colour.dark_blue()
+        title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
+        description="Explore the composition of your unsig..."
+        color=discord.Colour.dark_blue()
 
-#         embed = discord.Embed(title=title, description=description, color=color)
+        embed = discord.Embed(title=title, description=description, color=color)
 
-#         try:
-#             image_path = f"img/evolution_{number}.png"
+        try:
+            image_path = f"img/evolution_{number}.png"
             
-#             await gen_evolution(number, show_single_layers=extended)
+            await gen_evolution(number, show_single_layers=False)
 
-#             image_file = discord.File(image_path, filename="image.png")
-#             if image_file:
-#                 embed.set_image(url="attachment://image.png")
-#             delete_image_files(IMAGE_PATH)
-#         except:
-#              await ctx.send(content=f"I can't generate the composition of your unsig.")
-#              return
-#         else:
-#             await ctx.send(file=image_file, embed=embed)
+            image_file = discord.File(image_path, filename="image.png")
+            if image_file:
+                embed.set_image(url="attachment://image.png")
+            delete_image_files(IMAGE_PATH)
+        except:
+             await ctx.send(content=f"I can't generate the composition of your unsig.")
+             return
+        else:
+            await ctx.send(file=image_file, embed=embed)
 
 @slash.slash(
     name="minted", 
