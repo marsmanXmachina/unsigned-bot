@@ -132,7 +132,7 @@ async def gen_evolution(idx, show_single_layers=True):
         image = generate_image(image_array)
         images.append(image)
 
-    if show_single_layers:
+    if show_single_layers and num_props > 1:
         image = generate_image(n)
         images.append(image)
 
