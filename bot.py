@@ -528,7 +528,7 @@ async def invo(ctx: SlashContext, number: str):
         embed = discord.Embed(title=title, description=description, color=color)
 
         try:
-            image_path = f"img/involution_{number}.png"
+            image_path = f"img/evolution_{number}.png"
             
             await gen_evolution(number, show_single_layers=True)
 
