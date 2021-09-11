@@ -1,4 +1,5 @@
 import os
+import asyncio
 import numpy as np
 from PIL import Image, ImageOps
 
@@ -123,11 +124,15 @@ async def gen_evolution(idx, show_single_layers=True):
         else:
             n = add_layer(n, mult, dist, rot, c)
 
-        if show_single_layers and i!=0:
+        if show_single_layers:
             image_array = gen_layer(mult, dist, rot, c)
-            image = generate_image(image_array)
-            images.append(image)
+        else:
+            image_array = n
 
+        image = generate_image(image_array)
+        images.append(image)
+
+    if show_single_layers:
         image = generate_image(n)
         images.append(image)
 
@@ -144,7 +149,7 @@ async def gen_evolution(idx, show_single_layers=True):
         if not evolution:
             total_width = layer_width+2*PADDING
             if show_single_layers:
-                total_height = 2*PADDING+layer_height+shift*((num_props-1)*2)
+                total_height = 2*PADDING+layer_height+shift*((num_props))
             else:
                 total_height = 2*PADDING+layer_height+shift*(num_props-1)
             evolution = Image.new(mode="RGBA", size=(total_width, total_height), color="black")
@@ -155,9 +160,7 @@ async def gen_evolution(idx, show_single_layers=True):
 
         evolution = Image.alpha_composite(evolution, mask)
         mask.close()
-        # evolution.paste(image, (x_offset, y_offset), mask="alpha")
-        
-        
+
         y_offset += shift
 
     evolution = evolution.rotate(180)
@@ -171,3 +174,4 @@ def delete_image_files(path):
     for file in os.scandir(path):
         if file.name.endswith(".png"):
             os.unlink(file.path)
+
