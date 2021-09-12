@@ -350,7 +350,7 @@ def embed_minting_order(embed, minting_data):
     minting_order, minting_time = minting_data
     dt = timestamp_to_datetime(minting_time)
 
-    embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"{minting_order}/{MAX_AMOUNT+1} ({dt.date()})", inline=False)
+    embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"`{minting_order}/{MAX_AMOUNT+1}` ({dt.date()})", inline=False)
 
 def embed_sales(embed, sales):
 
@@ -442,7 +442,7 @@ def embed_marketplaces():
 def embed_policy():
     title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
     description="The official one and only..."
-    color=discord.Colour.yellow()
+    color=discord.Colour.orange()
 
     embed = discord.Embed(title=title, description=description, color=color)
     embed.add_field(name=f"Always check the policy ID", value=f"`{POLICY_ID}`", inline=False)
