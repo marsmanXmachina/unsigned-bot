@@ -47,6 +47,8 @@ BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
 POOL_PM_URL= "https://pool.pm"
 CNFT_URL = "https://cnft.io"
 
+UNSIGS_URL = "https://www.unsigs.com"
+
 MAX_AMOUNT = 31118
 
 EMOJI_FRAME="\U0001F5BC"
@@ -61,6 +63,7 @@ EMOJI_SHOPPINGBAGS = "\U0001F6CD"
 EMOJI_PERSON = "\U0001F464"
 EMOJI_NUMBERS = "\U0001F522"
 EMOJI_PALETTE = "\U0001F3A8"
+EMOJI_ARROW_DOWN = "\u2B07"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -282,6 +285,8 @@ def sort_sales_by_date(sales, descending=False):
 def filter_new_sales(past_sales, new_sales):
     return [sale for sale in new_sales if sale not in past_sales]
 
+def get_unsig_url(number: str):
+    return f"{UNSIGS_URL}/details/{number.zfill(5)}"
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
@@ -346,6 +351,31 @@ def embed_props(embed, minting_data):
 
     rotations_str = ", ".join([str(r) for r in rotations])
     embed.add_field(name=f"{EMOJI_CIRCLE_ARROWS} Rotations {EMOJI_CIRCLE_ARROWS}", value=f"`{rotations_str}`", inline=False)
+
+
+def embed_subpattern(embed, number:str):
+    try:
+        unsigs_subpattern = load_json("json/subpattern.json")
+    except:
+        print("Can not open subpatterns.")
+    else:
+        subpattern = unsigs_subpattern.get(number, None)
+        if subpattern:
+            subpattern_str = ""
+            for i, pattern in enumerate(reversed(subpattern)):
+                if not pattern:
+                    row = f"{i+1}. ` - `\n"
+                else:
+                    unsig_url = get_unsig_url(str(pattern))
+                    pattern = str(pattern).zfill(5)
+                    row = f"{i+1}. [#{pattern}]({unsig_url})\n"
+
+                
+                subpattern_str += row
+            
+            embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top to Bottom {EMOJI_ARROW_DOWN}", value=subpattern_str, inline=False)
+
+
 
 # @slash.slash(
 #     name="fund", 
@@ -470,11 +500,13 @@ async def unsig(ctx: SlashContext, number: str):
         minting_data = get_minting_data(number)
         minting_number = get_minting_number(asset_name)
 
+        unsig_url = get_unsig_url(number)
+
         title = f"{asset_name}"
         description="minted by unsigned_algorithms"
         color=discord.Colour.dark_blue()
 
-        embed = discord.Embed(title=title, description=description, color=color)
+        embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
         embed_minting_order(embed, minting_number)
        
@@ -575,6 +607,8 @@ async def evo(ctx: SlashContext, number: str):
         color=discord.Colour.dark_blue()
 
         embed = discord.Embed(title=title, description=description, color=color)
+
+        embed_subpattern(embed, number)
 
         try:
             image_path = f"img/evolution_{number}.png"
