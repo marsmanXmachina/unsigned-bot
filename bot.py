@@ -767,7 +767,7 @@ async def fetch_data():
             save_json("json/sales.json", bot.sales)
             bot.last_update = datetime.now()
 
-            # new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
+            new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
             await asyncio.sleep(2)
             await post_sales(new_sales)
