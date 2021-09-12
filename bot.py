@@ -49,6 +49,18 @@ CNFT_URL = "https://cnft.io"
 
 UNSIGS_URL = "https://www.unsigs.com"
 
+MARKETPLACES = {
+    "CNFT.IO": "https://cnft.io/marketplace.php?s=0e14267a8020229adc0184dd25fa3174c3f7d6caadcb4425c70e7c04",
+    "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1"
+}
+
+DISCORD_ESCROWS = {
+    "Flowers for Lovelace": "https://discord.gg/P2Dssm9at2",
+    "CNFT": "https://discord.gg/jpxXxMr8Dg",
+    "CardanoNFT": "https://discord.gg/mWDTRdDMVk",
+    "The Hoskinsons": "https://discord.gg/UvFyfsMgfP"
+}
+
 MAX_AMOUNT = 31118
 
 EMOJI_FRAME="\U0001F5BC"
@@ -64,6 +76,9 @@ EMOJI_PERSON = "\U0001F464"
 EMOJI_NUMBERS = "\U0001F522"
 EMOJI_PALETTE = "\U0001F3A8"
 EMOJI_ARROW_DOWN = "\u2B07"
+EMOJI_ARROW_RIGHT = "\u27A1"
+EMOJI_PARTY = "\U0001F389"
+EMOJI_WARNING = "\u26A0"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -222,7 +237,7 @@ def get_ipfs_hash(metadata, asset_id, asset_name):
         if image_url:   
             return image_url.rsplit("/")[-1]
 
-def get_minting_data(idx:str):
+def get_unsigs_data(idx:str):
     unsigs_data = load_json("json/unsigs.json")
     return unsigs_data.get(idx, None)
 
@@ -230,6 +245,17 @@ def get_minting_number(asset_name):
     minting_order = load_json("json/minted.json")
     number = minting_order.index(asset_name) + 1
     return number
+
+def get_minting_data(number: str):
+    unsigs_minted = load_json("json/unsigs_minted.json")
+    
+    minting_data = unsigs_minted.get(number)
+
+    minting_time = minting_data.get("time")
+    minting_order = minting_data.get("order")
+
+    return (minting_order, minting_time)
+    
 
 def get_current_owner_address(token_id: str) -> str:
     url = f"{CARDANOSCAN_URL}/token/{token_id}?tab=topholders"
@@ -256,9 +282,12 @@ def get_current_owner_address(token_id: str) -> str:
         return address
 
 def unsig_exists(number: str) -> bool:
-    if int(number) <= MAX_AMOUNT and int(number) >= 0:
-        return True
-    else:
+    try:
+        if int(number) <= MAX_AMOUNT and int(number) >= 0:
+            return True
+        else:
+            return False
+    except:
         return False
 
 def filter_by_time_interval(assets: list, interval_ms) -> list:
@@ -328,12 +357,12 @@ def embed_sales(embed, sales):
 
     embed.add_field(name=f"{EMOJI_SHOPPINGBAGS} Past sales", value=sales_value, inline=False)
 
-def embed_num_props(embed, minting_data):
-    total_props = minting_data.get("num_props")
+def embed_num_props(embed, unsigs_data):
+    total_props = unsigs_data.get("num_props")
     embed.add_field(name="Total properties", value=f"This unsig has **{total_props}** properties", inline=False)
 
-def embed_props(embed, minting_data):
-    properties = minting_data.get("properties")
+def embed_props(embed, unsigs_data):
+    properties = unsigs_data.get("properties")
 
     colors = properties.get("colors")
     multipliers = properties.get("multipliers")
@@ -376,6 +405,40 @@ def embed_subpattern(embed, number:str):
             embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top to Bottom {EMOJI_ARROW_DOWN}", value=subpattern_str, inline=False)
 
 
+def embed_marketplaces():
+    title = f"{EMOJI_SHOPPINGBAGS} Where to buy? {EMOJI_SHOPPINGBAGS}"
+    description="Places to buy your first unsig..."
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    marketplaces_str = ""
+    for marketplace, marketplace_url in MARKETPLACES.items():
+        marketplace_str = f"{EMOJI_ARROW_RIGHT} [{marketplace}]({marketplace_url})\n"
+        marketplaces_str += marketplace_str
+
+    embed.add_field(name=f"Marketplaces", value=marketplaces_str, inline=False)
+
+    escrows_str = ""
+    for escrow, escrow_url in DISCORD_ESCROWS.items():
+        escrow_str = f"{EMOJI_ARROW_RIGHT} [{escrow}]({escrow_url})\n"
+        escrows_str += escrow_str
+
+    embed.add_field(name=f"Escrows on discord server", value=escrows_str, inline=False)
+
+    embed.set_footer(text=f"The server has no affiliation with the marketplace nor listed prices.\n\nAlways check policy id:\n{POLICY_ID}")
+
+    return embed
+
+def embed_policy():
+    title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
+    description="The official one and only..."
+    color=discord.Colour.yellow()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+    embed.add_field(name=f"Always check the policy ID", value=f"`{POLICY_ID}`", inline=False)
+
+    return embed
 
 # @slash.slash(
 #     name="fund", 
@@ -400,11 +463,63 @@ def embed_subpattern(embed, number:str):
     
 #     await ctx.send(embed=embed)
 
+@slash.slash(
+    name="firework", 
+    description="A new era begins...", 
+    guild_ids=GUILD_IDS
+)
+async def firework(ctx: SlashContext):
+    title = f"{EMOJI_PARTY} Quantum of Alonzo {EMOJI_PARTY}"
+    description="A new era begins..."
+    color=discord.Colour.purple()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    embed.set_image(url="https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif")
+
+    await ctx.send(embed=embed)
+
+
+@slash.slash(
+    name="faq", 
+    description="Everything you should know about unsigs", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="topics",
+            description="Choose topic",
+            required=True,
+            option_type=3,
+            choices=[
+                create_choice(
+                    name="Where to buy?",
+                    value="buy_unsig"
+                ),
+                create_choice(
+                    name="Policy ID",
+                    value="policy_id"
+                )
+            ]
+        )
+    ]
+)
+async def faq(ctx: SlashContext, topics: str):
+    if not topics:
+        await ctx.send(content=f"Please choose a topic...")
+        return
+    else:
+        if topics == "buy_unsig":
+            embed = embed_marketplaces()
+
+        if topics == "policy_id":
+            embed = embed_policy()
+        
+        await ctx.send(embed=embed)
 
 
 @slash.slash(
     name="sell", 
-    description="offer you unsig for sale", 
+    description="offer your unsig for sale", 
     guild_ids=GUILD_IDS,
     options=[
         create_option(
@@ -434,7 +549,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
     else:
         asset_id = get_asset_id(asset_name)
 
-        minting_data = get_minting_data(number)
+        unsigs_data = get_unsigs_data(number)
         minting_number = get_minting_number(asset_name)
 
         title = f"{EMOJI_SHOPPINGBAGS} {asset_name} for sale {EMOJI_SHOPPINGBAGS}"
@@ -460,7 +575,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
 
         embed_minting_order(embed, minting_number)
 
-        embed_num_props(embed, minting_data)
+        embed_num_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url(asset_id, asset_name)
         if image_url:
@@ -497,7 +612,8 @@ async def unsig(ctx: SlashContext, number: str):
     else:
         asset_id = get_asset_id(asset_name)
 
-        minting_data = get_minting_data(number)
+        unsigs_data = get_unsigs_data(number)
+
         minting_number = get_minting_number(asset_name)
 
         unsig_url = get_unsig_url(number)
@@ -517,9 +633,9 @@ async def unsig(ctx: SlashContext, number: str):
             if past_sales:
                 embed_sales(embed, sales_by_date)
 
-        embed_num_props(embed, minting_data)
+        embed_num_props(embed, unsigs_data)
 
-        embed_props(embed, minting_data)
+        embed_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url(asset_id, asset_name)
 
@@ -653,7 +769,7 @@ async def minted(ctx: SlashContext, index: str):
 
         number = str(get_idx_from_asset_name(asset_name))
 
-        minting_data = get_minting_data(number)
+        unsigs_data = get_unsigs_data(number)
         minting_number = get_minting_number(asset_name)
 
         title = f"{asset_name}"
@@ -671,9 +787,9 @@ async def minted(ctx: SlashContext, index: str):
             if past_sales:
                 embed_sales(embed, sales_by_date)
 
-        embed_num_props(embed, minting_data)
+        embed_num_props(embed, unsigs_data)
 
-        embed_props(embed, minting_data)
+        embed_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url(asset_id, asset_name)
 
