@@ -101,10 +101,13 @@ async def get_sales_data(policy_id) -> list:
             return sales
         else:
 
-            if not total_amount:
-                total_amount = response.get('found')
+            if isinstance(response, dict):
+                if not total_amount:
+                    total_amount = response.get('found')
 
-            assets = response.get('assets')
+                assets = response.get('assets')
+            else:
+                return sales
             
             if assets:
                 sales.extend(assets)
