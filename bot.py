@@ -184,13 +184,15 @@ def get_asset_name_from_minting_order(idx:str):
 
 async def get_ipfs_url(asset_id, asset_name):
     metadata = await get_metadata(asset_id)
-    ipfs_hash = get_ipfs_hash(metadata, asset_id, asset_name)
-    if ipfs_hash:
-        ipfs_url = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
-        return ipfs_url
+    if metadata:
+        ipfs_hash = get_ipfs_hash(metadata, asset_id, asset_name)
+        if ipfs_hash:
+            ipfs_url = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
+            return ipfs_url
 
 async def get_ipfs_url_from_file(asset_name):
-    pass
+    ipfs_urls = load_json("json/ipfs_urls.json")
+    return ipfs_urls.get(asset_name, None)
     
 async def get_metadata(asset_id):
     tx_id = await get_minting_tx_id(asset_id)
@@ -210,8 +212,12 @@ async def get_minting_tx_id(asset_id):
     except:
         return
     else:
-        tx_id=r.html.xpath("//*[@id='minttransactions']//a[starts-with(@href,'/transaction')]/text()")[0]
-        return tx_id
+        try:
+            tx_id=r.html.xpath("//*[@id='minttransactions']//a[starts-with(@href,'/transaction')]/text()")[0]
+        except:
+            return
+        else:
+            return tx_id
 
 async def metadata_from_tx_id(tx_id):
     URL=f"{CARDANOSCAN_URL}/transaction/{tx_id}/?tab=metadata"
@@ -254,7 +260,7 @@ def get_minting_data(number: str):
     minting_time = minting_data.get("time")
     minting_order = minting_data.get("order")
 
-    return (minting_order, minting_time)
+    return (int(minting_order), int(minting_time))
     
 
 def get_current_owner_address(token_id: str) -> str:
@@ -340,8 +346,11 @@ async def on_ready():
 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='unsigned_algorithms'))
 
-def embed_minting_order(embed, minting_number):
-    embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"{minting_number}/{MAX_AMOUNT+1} ", inline=False)
+def embed_minting_order(embed, minting_data):
+    minting_order, minting_time = minting_data
+    dt = timestamp_to_datetime(minting_time)
+
+    embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"{minting_order}/{MAX_AMOUNT+1} ({dt.date()})", inline=False)
 
 def embed_sales(embed, sales):
 
@@ -463,21 +472,21 @@ def embed_policy():
     
 #     await ctx.send(embed=embed)
 
-@slash.slash(
-    name="firework", 
-    description="A new era begins...", 
-    guild_ids=GUILD_IDS
-)
-async def firework(ctx: SlashContext):
-    title = f"{EMOJI_PARTY} Quantum of Alonzo {EMOJI_PARTY}"
-    description="A new era begins..."
-    color=discord.Colour.purple()
+# @slash.slash(
+#     name="firework", 
+#     description="A new era begins...", 
+#     guild_ids=GUILD_IDS
+# )
+# async def firework(ctx: SlashContext):
+#     title = f"{EMOJI_PARTY} Quantum of Alonzo {EMOJI_PARTY}"
+#     description="A new era begins..."
+#     color=discord.Colour.purple()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+#     embed = discord.Embed(title=title, description=description, color=color)
 
-    embed.set_image(url="https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif")
+#     embed.set_image(url="https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif")
 
-    await ctx.send(embed=embed)
+#     await ctx.send(embed=embed)
 
 
 @slash.slash(
@@ -550,7 +559,8 @@ async def sell(ctx: SlashContext, number: str, price: str):
         asset_id = get_asset_id(asset_name)
 
         unsigs_data = get_unsigs_data(number)
-        minting_number = get_minting_number(asset_name)
+
+        minting_data = get_minting_data(number)
 
         title = f"{EMOJI_SHOPPINGBAGS} {asset_name} for sale {EMOJI_SHOPPINGBAGS}"
         description="Are you interested in this beautiful unsig?"
@@ -573,11 +583,11 @@ async def sell(ctx: SlashContext, number: str, price: str):
 
         embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=price_str, inline=True)
 
-        embed_minting_order(embed, minting_number)
+        embed_minting_order(embed, minting_data)
 
         embed_num_props(embed, unsigs_data)
 
-        image_url = await get_ipfs_url(asset_id, asset_name)
+        image_url = await get_ipfs_url_from_file(asset_name)
         if image_url:
             embed.set_image(url=image_url)
 
@@ -614,7 +624,7 @@ async def unsig(ctx: SlashContext, number: str):
 
         unsigs_data = get_unsigs_data(number)
 
-        minting_number = get_minting_number(asset_name)
+        minting_data = get_minting_data(number)
 
         unsig_url = get_unsig_url(number)
 
@@ -624,7 +634,7 @@ async def unsig(ctx: SlashContext, number: str):
 
         embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
-        embed_minting_order(embed, minting_number)
+        embed_minting_order(embed, minting_data)
        
         if bot.sales:
             past_sales = filter_sales_by_asset(bot.sales, asset_name)
@@ -637,7 +647,7 @@ async def unsig(ctx: SlashContext, number: str):
 
         embed_props(embed, unsigs_data)
 
-        image_url = await get_ipfs_url(asset_id, asset_name)
+        image_url = await get_ipfs_url_from_file(asset_name)
 
         if image_url:
             embed.set_image(url=image_url)
@@ -770,7 +780,8 @@ async def minted(ctx: SlashContext, index: str):
         number = str(get_idx_from_asset_name(asset_name))
 
         unsigs_data = get_unsigs_data(number)
-        minting_number = get_minting_number(asset_name)
+      
+        minting_data = get_minting_data(number)
 
         title = f"{asset_name}"
         description="minted by unsigned_algorithms"
@@ -778,7 +789,7 @@ async def minted(ctx: SlashContext, index: str):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        embed_minting_order(embed, minting_number)
+        embed_minting_order(embed, minting_data)
        
         if bot.sales:
             past_sales = filter_sales_by_asset(bot.sales, asset_name)
@@ -791,7 +802,7 @@ async def minted(ctx: SlashContext, index: str):
 
         embed_props(embed, unsigs_data)
 
-        image_url = await get_ipfs_url(asset_id, asset_name)
+        image_url = await get_ipfs_url_from_file(asset_name)
 
         if image_url:
             embed.set_image(url=image_url)
@@ -872,7 +883,7 @@ async def post_sales(sales):
             embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=f"₳{price:,.0f}", inline=True)
             embed.add_field(name=f"{EMOJI_CALENDAR} Sold on", value=date, inline=True)
 
-            image_url = await get_ipfs_url(asset_id, asset_name)
+            image_url = await get_ipfs_url_from_file(asset_name)
 
             if image_url:
                 embed.set_image(url=image_url)
