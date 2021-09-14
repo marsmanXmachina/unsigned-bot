@@ -79,6 +79,7 @@ EMOJI_ARROW_DOWN = "\u2B07"
 EMOJI_ARROW_RIGHT = "\u27A1"
 EMOJI_PARTY = "\U0001F389"
 EMOJI_WARNING = "\u26A0"
+EMOJI_ROBOT = "\U0001F916"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -525,6 +526,28 @@ async def faq(ctx: SlashContext, topics: str):
         
         await ctx.send(embed=embed)
 
+@slash.slash(
+    name="help", 
+    description="Get overview of my commands", 
+    guild_ids=GUILD_IDS,
+)
+async def help(ctx: SlashContext):
+    title = f"{EMOJI_ROBOT} My commands {EMOJI_ROBOT}"
+    description="How can I help you?"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color) 
+
+    embed.add_field(name="/faq", value="show important information", inline=False)
+    embed.add_field(name="/unsig + `integer`", value="show unsig with given number", inline=False)
+    embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
+    embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
+    embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
+    embed.add_field(name="/owner +  `integer`", value="show wallet of given unsig", inline=False)
+    embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
+    
+    await ctx.send(embed=embed)
+
 
 @slash.slash(
     name="sell", 
@@ -548,7 +571,7 @@ async def faq(ctx: SlashContext, topics: str):
 async def sell(ctx: SlashContext, number: str, price: str):
     SELLING_CHANNEL = "selling"
     if ctx.channel.name != SELLING_CHANNEL:
-        await ctx.send(content=f"Please post you offer in the #{SELLING_CHANNEL} channel.")
+        await ctx.send(content=f"Please post your offer in the #{SELLING_CHANNEL} channel.")
         return
         
     asset_name = get_asset_name_from_idx(number)
@@ -814,7 +837,7 @@ async def minted(ctx: SlashContext, index: str):
 
 @slash.slash(
     name="owner", 
-    description="shows wallet of unsig with given number", 
+    description="show wallet of unsig with given number", 
     guild_ids=GUILD_IDS,
     options=[
         create_option(
