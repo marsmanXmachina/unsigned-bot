@@ -1,4 +1,5 @@
 import os
+import math
 import asyncio
 import numpy as np
 from PIL import Image, ImageOps
@@ -58,6 +59,25 @@ def image_from_ndarray(n):
     image = Image.fromarray(n)
 
     return image
+
+def gen_image_array(unsig_data):
+    props = unsig_data['properties']
+
+    n = np.zeros((DIM, DIM, 3)).astype(np.uint32)
+
+    for i in range(unsig_data['num_props']):
+        mult = props['multipliers'][i]
+        col = props['colors'][i]
+        dist = props['distributions'][i]
+        rot = props['rotations'][i]
+
+        c = channels[col]
+
+        n = add_layer(n, mult, dist, rot, c)
+
+    n = np.interp(n, (0, U_RANGE), (0, 255)).astype(np.uint8)
+
+    return n    
 
 def generate_image(image_array):
     image = image_from_ndarray(image_array)
@@ -169,6 +189,52 @@ async def gen_evolution(idx, show_single_layers=True):
     evolution.close()
 
     print(f" Saved to => {path}")
+
+async def gen_grid(unsigs: list, cols):
+
+    unsigs_data = load_json("json/unsigs.json")
+
+    num_unsigs = len(unsigs)
+    if cols > num_unsigs:
+        cols = num_unsigs
+
+    rows = math.ceil(num_unsigs / cols)
+
+    padding = 50
+    margin = 5
+
+    unsig_width, unsig_height = DIM, DIM
+
+    image_width = (unsig_width+2*margin)*cols + 2*padding
+    image_height = (unsig_height+2*margin)*rows + 2*padding
+
+    grid = Image.new("RGB", (image_width, image_height))
+
+    offset_x = offset_y = padding + margin
+
+    unsig_idx = 0
+    for row in range(rows):
+        for col in range(cols):
+            data = unsigs_data.get(unsigs[unsig_idx])
+            image_array = gen_image_array(data)
+            image = Image.fromarray(image_array)
+
+            grid.paste(image, (offset_x, offset_y))
+            image.close()
+
+            offset_x += 2*margin+unsig_width
+            unsig_idx += 1
+
+            if unsig_idx == num_unsigs:
+                break 
+        
+        offset_x = padding + margin
+        offset_y += 2*margin+unsig_height
+        
+    
+    unsigs_str = "".join(unsigs)
+    path = f"img/grid_{unsigs_str}.png"
+    grid.save(path)
 
 def delete_image_files(path):
     for file in os.scandir(path):

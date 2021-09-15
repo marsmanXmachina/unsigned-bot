@@ -1,4 +1,5 @@
 import os
+import math
 import re
 import json
 import time
@@ -21,7 +22,7 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-from draw import gen_evolution, delete_image_files
+from draw import gen_evolution, gen_grid, delete_image_files
 
 INVERVAL_LOOP=900
 
@@ -324,6 +325,9 @@ def filter_new_sales(past_sales, new_sales):
 def get_unsig_url(number: str):
     return f"{UNSIGS_URL}/details/{number.zfill(5)}"
 
+def get_numbers_from_string(string):
+    return re.findall(r"\d+", string)
+
 
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
@@ -543,8 +547,9 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
     embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
-    embed.add_field(name="/owner +  `integer`", value="show wallet of given unsig", inline=False)
+    embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
+    embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -628,7 +633,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
             description="Number of your unsig",
             required=True,
             option_type=3,
-        )
+        ),
     ]
 )
 async def unsig(ctx: SlashContext, number: str):
@@ -681,6 +686,90 @@ async def unsig(ctx: SlashContext, number: str):
         await ctx.send(embed=embed)
 
 @slash.slash(
+    name="show", 
+    description="show collection of your unsigs", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="numbers",
+            description="Numbers of your unsigs",
+            required=True,
+            option_type=3,
+        ),
+        create_option(
+            name="columns",
+            description="no. of unsigs side by side",
+            required=False,
+            option_type=3,
+        ),
+    ]
+)
+async def show(ctx: SlashContext, numbers: str, columns: str = None):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here...")
+        return
+
+    unsig_numbers = get_numbers_from_string(numbers)
+    
+    if not unsig_numbers:
+        await ctx.send(content=f"Please enter numbers for your unsigs")
+        return
+
+    numbers_cleaned = list()
+    for number in unsig_numbers:
+        try:
+            number = str(int(number))
+        except:
+            await ctx.send(content=f"unsig{number} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+            return
+        else:
+            numbers_cleaned.append(number)
+    
+    if not columns:
+        columns = math.ceil(math.sqrt(len(numbers_cleaned)))
+    else:
+        try:
+            columns = int(columns)
+        except:
+            await ctx.send(content=f"Please enter the number of unsigs displayed sidy by side")
+            return
+
+    
+    title = f"{EMOJI_FRAME} Your collection {EMOJI_FRAME}"
+    description="Look at this beautiful collection of unsigs..."
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    collection_str=""
+    unsigs_links = [f"[#{num.zfill(5)}]({UNSIGS_URL}/details/{num.zfill(5)})" for num in numbers_cleaned]
+
+    for i, link in enumerate(unsigs_links):
+        collection_str += f"  {link}"
+        if (i+1) % columns == 0:
+            collection_str += f"\n"
+
+    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top to Bottom {EMOJI_ARROW_DOWN}", value=collection_str, inline=False)
+
+    try:
+        image_path = f"img/grid_{''.join(numbers_cleaned)}.png"
+        
+        await gen_grid(numbers_cleaned, columns)
+
+        image_file = discord.File(image_path, filename="grid.png")
+        if image_file:
+            embed.set_image(url="attachment://grid.png")
+        delete_image_files(IMAGE_PATH)
+    except:
+        await ctx.send(content=f"I can't generate the collection of your unsig.")
+        return
+    else:
+        await ctx.send(file=image_file, embed=embed)
+
+    
+
+@slash.slash(
     name="invo", 
     description="show ingredients of unsig with given number", 
     guild_ids=GUILD_IDS,
@@ -721,8 +810,8 @@ async def invo(ctx: SlashContext, number: str):
                 embed.set_image(url="attachment://image.png")
             delete_image_files(IMAGE_PATH)
         except:
-             await ctx.send(content=f"I can't generate the ingredients of your unsig.")
-             return
+            await ctx.send(content=f"I can't generate the ingredients of your unsig.")
+            return
         else:
             await ctx.send(file=image_file, embed=embed)
 
@@ -851,7 +940,7 @@ async def minted(ctx: SlashContext, index: str):
 async def owner(ctx: SlashContext, number: str):
 
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...d")
+        await ctx.send(content=f"I'm not allowed to post here...")
         return 
 
     asset_name = get_asset_name_from_idx(number)
@@ -953,8 +1042,8 @@ async def fetch_data():
 
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            await asyncio.sleep(2)
-            await post_sales(new_sales)
+            # await asyncio.sleep(2)
+            # await post_sales(new_sales)
  
     print("Updated:", datetime.now()) 
 
