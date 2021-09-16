@@ -8,8 +8,11 @@ from datetime import datetime
 import asyncio
 
 from operator import itemgetter
+from collections import defaultdict
 
 from files_util import load_json, save_json
+
+import aiohttp
 
 import requests
 from requests_html import HTMLSession, AsyncHTMLSession
@@ -23,6 +26,8 @@ from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
 from draw import gen_evolution, gen_grid, delete_image_files
+
+from fetch import fetch_data_from_marketplace
 
 INVERVAL_LOOP=900
 
@@ -47,6 +52,7 @@ CARDANOSCAN_URL = "https://cardanoscan.io"
 BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
 POOL_PM_URL= "https://pool.pm"
 CNFT_URL = "https://cnft.io"
+CNFT_API_URL = "https://api.cnft.io/market/listings"
 
 UNSIGS_URL = "https://www.unsigs.com"
 
@@ -81,6 +87,7 @@ EMOJI_ARROW_RIGHT = "\u27A1"
 EMOJI_PARTY = "\U0001F389"
 EMOJI_WARNING = "\u26A0"
 EMOJI_ROBOT = "\U0001F916"
+EMOJI_BROOM = "\U0001F9F9"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -289,6 +296,7 @@ def get_current_owner_address(token_id: str) -> str:
     finally:
         return address
 
+
 def unsig_exists(number: str) -> bool:
     try:
         if int(number) <= MAX_AMOUNT and int(number) >= 0:
@@ -297,6 +305,7 @@ def unsig_exists(number: str) -> bool:
             return False
     except:
         return False
+
 
 def filter_by_time_interval(assets: list, interval_ms) -> list:
     timestamp_now = round(time.time() * 1000)
@@ -322,15 +331,36 @@ def sort_sales_by_date(sales, descending=False):
 def filter_new_sales(past_sales, new_sales):
     return [sale for sale in new_sales if sale not in past_sales]
 
+def filter_available_assets(assets):
+    return [asset for asset in assets if not asset.get("reserved")]
+
 def get_unsig_url(number: str):
     return f"{UNSIGS_URL}/details/{number.zfill(5)}"
 
 def get_numbers_from_string(string):
     return re.findall(r"\d+", string)
 
+def order_by_num_props(assets: list) -> dict:
+    ordered = defaultdict(list)
+
+    for asset in assets:
+        num_props = asset.get("num_props")
+        ordered[num_props].append(asset)
+
+    return ordered
+
+def get_min_prices(assets: list) -> list:
+    min_price = min([asset.get("price") for asset in assets])
+    return [asset for asset in assets if asset.get("price") == min_price]
+
+def get_url_from_marketplace_id(marketplace_id: str) -> str:
+    return f"https://cnft.io/token.php?id={marketplace_id}"
+
 
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
+bot.offers = None
+bot.offers_updated = None
 
 slash = SlashCommand(bot, sync_commands=True)
 
@@ -338,6 +368,7 @@ slash = SlashCommand(bot, sync_commands=True)
 async def on_ready():
     if not fetch_data.is_running():
         fetch_data.start()
+    
 
     print("guilds", bot.guilds)
 
@@ -418,6 +449,12 @@ def embed_subpattern(embed, number:str):
             
             embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top to Bottom {EMOJI_ARROW_DOWN}", value=subpattern_str, inline=False)
 
+def add_disclaimer(embed, last_update):
+    last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
+    embed.set_footer(text=f"The server has no affiliation with the marketplace nor listed prices.\n\nData comes from https://cnft.io\nLast update: {last_update}")
+
+def add_policy(embed):
+    embed.add_field(name = f"\u26A0 Watch out for fake items and always check the policy id \u26A0", value=f"`{POLICY_ID}`", inline=False)
 
 def embed_marketplaces():
     title = f"{EMOJI_SHOPPINGBAGS} Where to buy? {EMOJI_SHOPPINGBAGS}"
@@ -451,6 +488,38 @@ def embed_policy():
 
     embed = discord.Embed(title=title, description=description, color=color)
     embed.add_field(name=f"Always check the policy ID", value=f"`{POLICY_ID}`", inline=False)
+
+    return embed
+
+
+def embed_offers(assets_ordered: dict):
+    title = f"{EMOJI_BROOM} Floor {EMOJI_BROOM}"
+    description="Cheapest unsigs on marketplace"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    for idx in range(7):
+
+        assets = assets_ordered.get(idx, None)
+
+        if assets:
+            offers_str=""
+            low_priced_assets = get_min_prices(assets)
+
+            min_price = None
+            for asset in low_priced_assets:
+                min_price = asset.get("price")/1000000
+                asset_name = asset.get("assetid")
+                number = asset_name.replace("unsig_", "")
+                marketplace_id = asset.get("id")
+                offers_str += f" [#{number.zfill(5)}]({get_url_from_marketplace_id(marketplace_id)}) "
+            
+            offers_str += f"for **₳{min_price:,.0f}**\n"
+        else:
+            offers_str = "` - `"
+        
+        embed.add_field(name=f"**{idx} props**", value=offers_str, inline=False)
 
     return embed
 
@@ -550,8 +619,35 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
+    embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
     
     await ctx.send(embed=embed)
+
+@slash.slash(
+    name="floor", 
+    description="show cheapest unsigs on marketplace", 
+    guild_ids=GUILD_IDS
+)
+async def floor(ctx: SlashContext):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here...")
+        return
+    
+    if bot.offers:
+        for_sale = filter_available_assets(bot.offers)
+        ordered_by_props = order_by_num_props(for_sale)
+
+        embed = embed_offers(ordered_by_props)
+
+        add_policy(embed)
+
+        add_disclaimer(embed, bot.offers_updated)
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(content=f"Currently no marketplace data available...")
+        return
 
 
 @slash.slash(
@@ -585,6 +681,8 @@ async def sell(ctx: SlashContext, number: str, price: str):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
         asset_id = get_asset_id(asset_name)
+
+        number = str(int(number))
 
         unsigs_data = get_unsigs_data(number)
 
@@ -649,6 +747,8 @@ async def unsig(ctx: SlashContext, number: str):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
         asset_id = get_asset_id(asset_name)
+
+        number = str(int(number))
 
         unsigs_data = get_unsigs_data(number)
 
@@ -742,11 +842,11 @@ async def show(ctx: SlashContext, numbers: str, columns: str = None):
 
     embed = discord.Embed(title=title, description=description, color=color)
 
-    collection_str=""
-    unsigs_links = [f"[#{num.zfill(5)}]({UNSIGS_URL}/details/{num.zfill(5)})" for num in numbers_cleaned]
+    collection_str=" "
+    unsigs_links = [f"[#{num.zfill(5)}]({get_unsig_url(num)})" for num in numbers_cleaned]
 
     for i, link in enumerate(unsigs_links):
-        collection_str += f"  {link}"
+        collection_str += f" {link}"
         if (i+1) % columns == 0:
             collection_str += f"\n"
 
@@ -794,6 +894,8 @@ async def invo(ctx: SlashContext, number: str):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
 
+        number = str(int(number))
+
         title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
         description="Explore the ingredients of your unsig..."
         color=discord.Colour.dark_blue()
@@ -839,6 +941,8 @@ async def evo(ctx: SlashContext, number: str):
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
+
+        number = str(int(number))
 
         title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
         description="Explore the composition of your unsig..."
@@ -890,6 +994,7 @@ async def minted(ctx: SlashContext, index: str):
         asset_id = get_asset_id(asset_name)
 
         number = str(get_idx_from_asset_name(asset_name))
+        unsig_url = get_unsig_url(number)
 
         unsigs_data = get_unsigs_data(number)
       
@@ -899,7 +1004,7 @@ async def minted(ctx: SlashContext, index: str):
         description="minted by unsigned_algorithms"
         color=discord.Colour.dark_blue()
 
-        embed = discord.Embed(title=title, description=description, color=color)
+        embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
         embed_minting_order(embed, minting_data)
        
@@ -1030,7 +1135,7 @@ async def publish_last_messages():
 
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
-    
+
     assets_data = await get_sales_data(POLICY_ID)
     sales_data = extract_sales_data(assets_data)
     if sales_data:
@@ -1038,12 +1143,18 @@ async def fetch_data():
         if new_sales:
             bot.sales.extend(new_sales)
             save_json("json/sales.json", bot.sales)
-            bot.last_update = datetime.now()
+            bot.sales_updated = datetime.utcnow()
+            print("sales updated", bot.sales_updated)
 
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            # await asyncio.sleep(2)
-            # await post_sales(new_sales)
+            await asyncio.sleep(2)
+            await post_sales(new_sales)
+    
+    offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
+    if offers_data:
+        bot.offers = offers_data
+        bot.offers_updated = datetime.utcnow()
  
     print("Updated:", datetime.now()) 
 
