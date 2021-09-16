@@ -87,14 +87,12 @@ async def fetch_data_from_marketplace(url, policy_id, sold=False):
         return
     else:
         assets = get_data_from_reponses(responses)
+        if assets:
+            assets_parsed = parse_data(assets, sold)
 
-        assets_parsed = parse_data(assets, sold)
+            assets_extended = add_num_props(assets_parsed)
 
-        assets_extended = add_num_props(assets_parsed)
-
-       
-
-        return assets_extended
+            return assets_extended
 
 
 def get_data_from_reponses(responses):
@@ -112,6 +110,8 @@ def get_data_from_reponses(responses):
                 assets.extend(assets_found)
     
     if num_assets_found > len(assets):
+        print("not all assets requested")
+        print(num_assets_found, len(assets))
         return
     
     print(f"{len(assets)} assets found!")

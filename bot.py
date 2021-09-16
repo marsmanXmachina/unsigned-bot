@@ -493,7 +493,7 @@ def embed_policy():
 
 
 def embed_offers(assets_ordered: dict):
-    title = f"{EMOJI_BROOM} Floor {EMOJI_BROOM}"
+    title = f"{EMOJI_BROOM} Unsigs Floor {EMOJI_BROOM}"
     description="Cheapest unsigs on marketplace"
     color=discord.Colour.dark_blue()
 
