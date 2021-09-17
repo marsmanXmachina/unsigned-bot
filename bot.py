@@ -142,9 +142,9 @@ async def get_sales_data(policy_id) -> list:
                 next_page = False
 
             print(f"{len(assets)} assets found on sales page {payload['page']}")
-            # payload["page"] += 1
+            payload["page"] += 1
 
-            return sales
+    return sales
     
 
 def extract_sales_data(assets_data):
