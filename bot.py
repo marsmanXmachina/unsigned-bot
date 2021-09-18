@@ -502,8 +502,10 @@ def embed_offers(assets_ordered: dict):
     for idx in range(7):
 
         assets = assets_ordered.get(idx, None)
+        
 
         if assets:
+            num_assets = len(assets)
             offers_str=""
             low_priced_assets = get_min_prices(assets)
 
@@ -515,9 +517,10 @@ def embed_offers(assets_ordered: dict):
                 marketplace_id = asset.get("id")
                 offers_str += f" [#{number.zfill(5)}]({get_url_from_marketplace_id(marketplace_id)}) "
             
-            offers_str += f"for **₳{min_price:,.0f}**\n"
+            offers_str += f"for **₳{min_price:,.0f}** (out of {num_assets})\n"
         else:
             offers_str = "` - `"
+            num_assets = 0
         
         embed.add_field(name=f"**{idx} props**", value=offers_str, inline=False)
 
