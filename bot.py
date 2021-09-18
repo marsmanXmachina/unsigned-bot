@@ -1136,8 +1136,7 @@ async def publish_last_messages():
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
 
-    assets_data = await get_sales_data(POLICY_ID)
-    sales_data = extract_sales_data(assets_data)
+    sales_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=True)
     if sales_data:
         new_sales = filter_new_sales(bot.sales, sales_data)
         if new_sales:
