@@ -306,6 +306,19 @@ def unsig_exists(number: str) -> bool:
     except:
         return False
 
+def get_interval_from_period(period):
+
+    INVERVALS_IN_DAYS = {
+        "day": 1,
+        "week": 7,
+        "month": 30
+    }
+
+    interval = INVERVALS_IN_DAYS.get(period)
+    if interval:
+        return interval * 24 * 3600 * 1000
+    else:
+        return 0
 
 def filter_by_time_interval(assets: list, interval_ms) -> list:
     timestamp_now = round(time.time() * 1000)
@@ -353,12 +366,21 @@ def get_min_prices(assets: list) -> list:
     min_price = min([asset.get("price") for asset in assets])
     return [asset for asset in assets if asset.get("price") == min_price]
 
+def get_average_price(assets: list) -> float:
+    num_assets = len(assets) 
+    return sum_prices(assets)/num_assets if num_assets else 0  
+
+def sum_prices(assets: list) -> float:
+    return sum([asset.get("price") for asset in assets])
+
 def get_url_from_marketplace_id(marketplace_id: str) -> str:
     return f"https://cnft.io/token.php?id={marketplace_id}"
 
 
+
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
+bot.sales_updated = None
 bot.offers = None
 bot.offers_updated = None
 
@@ -388,7 +410,7 @@ def embed_minting_order(embed, minting_data):
 
     embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"`{minting_order}/{MAX_AMOUNT+1}` ({dt.date()})", inline=False)
 
-def embed_sales(embed, sales):
+def add_sales(embed, sales):
 
     sales_value=""
 
@@ -453,6 +475,10 @@ def add_disclaimer(embed, last_update):
     last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
     embed.set_footer(text=f"The server has no affiliation with the marketplace nor listed prices.\n\nData comes from https://cnft.io\nLast update: {last_update}")
 
+def add_data_source(embed, last_update):
+    last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
+    embed.set_footer(text=f"Data comes from https://cnft.io\nLast update: {last_update}")
+
 def add_policy(embed):
     embed.add_field(name = f"\u26A0 Watch out for fake items and always check the policy id \u26A0", value=f"`{POLICY_ID}`", inline=False)
 
@@ -503,7 +529,6 @@ def embed_offers(assets_ordered: dict):
 
         assets = assets_ordered.get(idx, None)
         
-
         if assets:
             num_assets = len(assets)
             offers_str=""
@@ -525,6 +550,50 @@ def embed_offers(assets_ordered: dict):
         embed.add_field(name=f"**{idx} props**", value=offers_str, inline=False)
 
     return embed
+
+def embed_sales(assets, prices_type, period):
+
+    num_assets = len(assets)
+
+    ordered = order_by_num_props(assets)
+    if not period:
+        period_str = "all-time"
+    else:
+        period_str = f"last {period}"
+
+    title = f"{EMOJI_CART} Unsigs sold {period_str} {EMOJI_CART}"
+    description=f"**{num_assets}** sold on marketplace"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+
+    for idx in range(7):
+        assets_props = ordered.get(idx, None)
+
+        if assets_props:
+            num_sold_props = len(assets_props)
+
+            if prices_type == "highest":
+                max_priced = max(assets_props, key=lambda x:x['price'])
+                price = max_priced.get("price")/1000000
+                name = max_priced.get("assetid")
+                number = name.replace("unsig_", "")
+                timestamp_ms = max_priced.get("date")
+                dt = timestamp_to_datetime(timestamp_ms)
+
+                sales_str = f"[#{number}]({get_unsig_url(number)}) sold for **₳{price:,.0f}** on {dt.date()}"
+            else:
+                average_price = get_average_price(assets_props)/1000000
+                sales_str = f"**{num_sold_props}** sold for **\u2300 ₳{average_price:,.0f}**"
+
+        else:
+            sales_str = "` - `"
+
+        embed.add_field(name=f"**{idx} props**", value=sales_str, inline=False)
+
+    return embed
+
 
 # @slash.slash(
 #     name="fund", 
@@ -623,8 +692,82 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
     embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
+    embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
     
     await ctx.send(embed=embed)
+
+
+
+@slash.slash(
+    name="sales", 
+    description="show cheapest unsigs on marketplace", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="prices",
+            description="type of price data",
+            required=False,
+            option_type=3,
+            choices=[
+                create_choice(
+                    name="average prices",
+                    value="average"
+                ),
+                create_choice(
+                    name="top sales",
+                    value="highest"
+                )
+            ]
+        ),
+        create_option(
+            name="period",
+            description="period of sales",
+            required=False,
+            option_type=3,
+            choices=[
+                create_choice(
+                    name="last day",
+                    value="day"
+                ),
+                create_choice(
+                    name="last week",
+                    value="week"
+                ),
+                create_choice(
+                    name="last month",
+                    value="month"
+                )
+            ]
+        )
+    ]
+)
+async def sales(ctx: SlashContext, prices=None, period=None):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    if bot.sales:
+
+        if period:
+            interval_ms = get_interval_from_period(period)
+            if not interval_ms:
+                await ctx.send(content=f"Please enter a valid time period!")
+                return
+            else:
+                filtered= filter_by_time_interval(bot.sales, interval_ms)
+        else: 
+            filtered = bot.sales
+
+        embed = embed_sales(filtered, prices, period)
+
+        add_data_source(embed, bot.sales_updated)
+
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(content=f"Currently no sales data available...")
+        return
+       
 
 @slash.slash(
     name="floor", 
@@ -634,7 +777,7 @@ async def help(ctx: SlashContext):
 async def floor(ctx: SlashContext):
         
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
     
     if bot.offers:
@@ -740,7 +883,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
 async def unsig(ctx: SlashContext, number: str):
         
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
 
 
@@ -772,7 +915,7 @@ async def unsig(ctx: SlashContext, number: str):
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
 
             if past_sales:
-                embed_sales(embed, sales_by_date)
+                add_sales(embed, sales_by_date)
 
         embed_num_props(embed, unsigs_data)
 
@@ -810,7 +953,7 @@ async def unsig(ctx: SlashContext, number: str):
 async def show(ctx: SlashContext, numbers: str, columns: str = None):
         
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
 
     unsig_numbers = get_numbers_from_string(numbers)
@@ -888,7 +1031,7 @@ async def show(ctx: SlashContext, numbers: str, columns: str = None):
 async def invo(ctx: SlashContext, number: str):
         
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
 
     asset_name = get_asset_name_from_idx(number)
@@ -936,7 +1079,7 @@ async def invo(ctx: SlashContext, number: str):
 async def evo(ctx: SlashContext, number: str):
         
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
 
     asset_name = get_asset_name_from_idx(number)
@@ -986,7 +1129,7 @@ async def evo(ctx: SlashContext, number: str):
 async def minted(ctx: SlashContext, index: str):
         
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
         
     asset_name = get_asset_name_from_minting_order(index)
@@ -1016,7 +1159,7 @@ async def minted(ctx: SlashContext, index: str):
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
 
             if past_sales:
-                embed_sales(embed, sales_by_date)
+                add_sales(embed, sales_by_date)
 
         embed_num_props(embed, unsigs_data)
 
@@ -1048,7 +1191,7 @@ async def minted(ctx: SlashContext, index: str):
 async def owner(ctx: SlashContext, number: str):
 
     if ctx.channel.name == "general":
-        await ctx.send(content=f"I'm not allowed to post here...")
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return 
 
     asset_name = get_asset_name_from_idx(number)
@@ -1142,16 +1285,17 @@ async def fetch_data():
     sales_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=True)
     if sales_data:
         new_sales = filter_new_sales(bot.sales, sales_data)
+        bot.sales_updated = datetime.utcnow()
+        print("sales updated", bot.sales_updated)
+
         if new_sales:
             bot.sales.extend(new_sales)
             save_json("json/sales.json", bot.sales)
-            bot.sales_updated = datetime.utcnow()
-            print("sales updated", bot.sales_updated)
-
+    
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            await asyncio.sleep(2)
-            await post_sales(new_sales)
+            # await asyncio.sleep(2)
+            # await post_sales(new_sales)
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
