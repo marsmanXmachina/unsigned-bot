@@ -88,6 +88,7 @@ EMOJI_PARTY = "\U0001F389"
 EMOJI_WARNING = "\u26A0"
 EMOJI_ROBOT = "\U0001F916"
 EMOJI_BROOM = "\U0001F9F9"
+EMOJI_MONEYWINGS = "\U0001F4B8"
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -561,7 +562,11 @@ def embed_sales(assets, prices_type, period):
     else:
         period_str = f"last {period}"
 
-    title = f"{EMOJI_CART} Unsigs sold {period_str} {EMOJI_CART}"
+    if prices_type == "highest":
+        title = f"{EMOJI_MONEYWINGS} Highest sales {period_str} {EMOJI_MONEYWINGS}"
+    else:
+        title = f"{EMOJI_CART} Average sales {period_str} {EMOJI_CART}"
+        
     description=f"**{num_assets}** sold on marketplace"
     color=discord.Colour.dark_blue()
 
@@ -572,17 +577,21 @@ def embed_sales(assets, prices_type, period):
         assets_props = ordered.get(idx, None)
 
         if assets_props:
+            sales_str = ""
             num_sold_props = len(assets_props)
 
             if prices_type == "highest":
-                max_priced = max(assets_props, key=lambda x:x['price'])
-                price = max_priced.get("price")/1000000
-                name = max_priced.get("assetid")
-                number = name.replace("unsig_", "")
-                timestamp_ms = max_priced.get("date")
-                dt = timestamp_to_datetime(timestamp_ms)
+                sorted_by_price = sorted(assets_props, key=lambda x:x['price'], reverse=True)
+                
+                for j in range(3):
+                    max_priced = sorted_by_price[j]
+                    price = max_priced.get("price")/1000000
+                    name = max_priced.get("assetid")
+                    number = name.replace("unsig_", "")
+                    timestamp_ms = max_priced.get("date")
+                    dt = timestamp_to_datetime(timestamp_ms)
 
-                sales_str = f"[#{number}]({get_unsig_url(number)}) sold for **₳{price:,.0f}** on {dt.date()}"
+                    sales_str += f"[#{number}]({get_unsig_url(number)}) sold for **₳{price:,.0f}** on {dt.date()}\n"
             else:
                 average_price = get_average_price(assets_props)/1000000
                 sales_str = f"**{num_sold_props}** sold for **\u2300 ₳{average_price:,.0f}**"
@@ -1294,8 +1303,8 @@ async def fetch_data():
     
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            # await asyncio.sleep(2)
-            # await post_sales(new_sales)
+            await asyncio.sleep(2)
+            await post_sales(new_sales)
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
