@@ -709,7 +709,7 @@ async def help(ctx: SlashContext):
 
 @slash.slash(
     name="sales", 
-    description="show cheapest unsigs on marketplace", 
+    description="show data of sold unsigs on marketplace", 
     guild_ids=GUILD_IDS,
     options=[
         create_option(
@@ -1082,10 +1082,22 @@ async def invo(ctx: SlashContext, number: str):
             description="Number of your unsig",
             required=True,
             option_type=3,
+        ),
+        create_option(
+            name="extended",
+            description="show ingredient layers",
+            required=False,
+            option_type=3,
+            choices=[
+                create_choice(
+                    name="show ingredients",
+                    value="extended"
+                )
+            ]
         )
     ]
 )
-async def evo(ctx: SlashContext, number: str):
+async def evo(ctx: SlashContext, number: str, extended=False):
         
     if ctx.channel.name == "general":
         await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
@@ -1110,7 +1122,12 @@ async def evo(ctx: SlashContext, number: str):
         try:
             image_path = f"img/evolution_{number}.png"
             
-            await gen_evolution(number, show_single_layers=False)
+            if extended == "extended":
+                extended = True
+            else:
+                extended = False
+
+            await gen_evolution(number, show_single_layers=False, extended=extended)
 
             image_file = discord.File(image_path, filename="image.png")
             if image_file:

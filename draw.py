@@ -119,7 +119,7 @@ def add_border(image):
     return with_border
 
 
-async def gen_evolution(idx, show_single_layers=True):
+async def gen_evolution(idx, show_single_layers=True, extended=False):
 
     PADDING = 150
 
@@ -127,6 +127,9 @@ async def gen_evolution(idx, show_single_layers=True):
 
     props = unsig_data.get("properties")
     num_props = unsig_data.get("num_props")
+
+    if num_props < 2:
+        extended = False
 
     n = None
 
@@ -149,6 +152,11 @@ async def gen_evolution(idx, show_single_layers=True):
         else:
             image_array = n
 
+        if extended:
+            n_ext = gen_layer(mult, dist, rot, c)
+            image_ext = generate_image(n_ext)
+            images.append(image_ext)
+
         image = generate_image(image_array)
         images.append(image)
 
@@ -161,7 +169,7 @@ async def gen_evolution(idx, show_single_layers=True):
     x_offset = PADDING
     y_offset = PADDING
 
-    for image in images:
+    for image_idx, image in enumerate(images):
         image = image.rotate(180)
         layer_width, layer_height = image.size
         shift = int(layer_height * 0.8)
@@ -171,9 +179,19 @@ async def gen_evolution(idx, show_single_layers=True):
             if show_single_layers:
                 total_height = 2*PADDING+layer_height+shift*((num_props))
             else:
+                if extended:
+                    total_width = 2*(layer_width+2*PADDING)
+
                 total_height = 2*PADDING+layer_height+shift*(num_props-1)
+
             evolution = Image.new(mode="RGBA", size=(total_width, total_height), color="black")
         
+        if extended:
+            if image_idx % 2 == 0:
+                x_offset = PADDING
+            else:
+                x_offset = 3*PADDING + layer_width
+
         mask = Image.new(mode="RGBA", size=evolution.size)
         mask.paste(image, (x_offset, y_offset))
         image.close()
@@ -181,7 +199,11 @@ async def gen_evolution(idx, show_single_layers=True):
         evolution = Image.alpha_composite(evolution, mask)
         mask.close()
 
-        y_offset += shift
+        if extended:
+            if image_idx % 2 != 0:
+                y_offset += shift
+        else:
+            y_offset += shift
 
     evolution = evolution.rotate(180)
     path = f'img/evolution_{idx}.png'
