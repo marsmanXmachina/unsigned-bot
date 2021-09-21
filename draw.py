@@ -258,8 +258,85 @@ async def gen_grid(unsigs: list, cols):
     path = f"img/grid_{unsigs_str}.png"
     grid.save(path)
 
-def delete_image_files(path):
+def v_fade(step=16):
+    n = np.zeros((DIM, DIM)).astype(np.uint8)   
+
+    result = list()
+    for i in range(0, 255, step):
+        n[:][:] = i
+        result.append(Image.fromarray(n.copy()))
+    
+    n[:][:] = 255
+    result.append(Image.fromarray(n.copy()))
+
+    return result
+
+def v_blend(width = 16):
+    '''make masks for fading from one image to the next through a vertical sweep.  Does this through numpy slices'''
+              
+    n = np.zeros((DIM, DIM)).astype(np.uint8)            
+    
+    result=[Image.fromarray(n.copy())]
+
+    for i in range(int(n.shape[0]/width)+1):
+        y=i*(width)
+        n[y:y+width][:] = 255
+
+        result.append(Image.fromarray(n.copy()))
+
+    return result
+
+async def gen_animation(idx, mode="fade"):
+    unsig_data = load_unsig_data(idx)
+
+    props = unsig_data.get("properties")
+    num_props = unsig_data.get("num_props")
+
+    images = list()
+
+    n = None
+    for i in range(num_props):
+        mult = props['multipliers'][i]
+        col = props['colors'][i]
+        dist = props['distributions'][i]
+        rot = props['rotations'][i]
+        c = channels[col]
+
+        if n is None:
+            n = gen_layer(mult, dist, rot, c)
+        else:
+            n = add_layer(n, mult, dist, rot, c)
+        
+        new_layer = image_from_ndarray(n)
+        images.append(new_layer)
+
+    images_faded = list()
+    for i in range(len(images)):
+        if i == 0:
+            continue
+        
+        if mode =="blend":
+            images_faded.extend([Image.composite(images[i],images[i-1],mask) for mask in v_blend()])
+        else:
+            images_faded.extend([Image.composite(images[i],images[i-1],mask) for mask in v_fade()])
+
+    
+    base_layer = images[0]
+
+    if mode == "blend":
+        duration = 50
+    else:
+        duration = 100
+
+    durations = [duration] * (len(images_faded)+1)
+    durations[-0] = 500
+    durations[-1] = 2000
+
+    base_layer.save(f"img/animation_{idx}.gif", format="GIF",  append_images=images_faded, save_all=True, duration=durations, loop=0)
+
+def delete_image_files(path, suffix="png"):
     for file in os.scandir(path):
-        if file.name.endswith(".png"):
+        if file.name.endswith(f".{suffix}"):
             os.unlink(file.path)
+
 

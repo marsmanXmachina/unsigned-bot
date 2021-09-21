@@ -25,7 +25,7 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-from draw import gen_evolution, gen_grid, delete_image_files
+from draw import gen_evolution, gen_grid, gen_animation, delete_image_files
 
 from fetch import fetch_data_from_marketplace
 
@@ -887,9 +887,25 @@ async def sell(ctx: SlashContext, number: str, price: str):
             required=True,
             option_type=3,
         ),
+        create_option(
+            name="animation",
+            description="show animated unsig",
+            required=False,
+            option_type=3,
+            choices=[
+                create_choice(
+                    name="fading",
+                    value="fade"
+                ),
+                create_choice(
+                    name="blending",
+                    value="blend"
+                )
+            ]
+        )
     ]
 )
-async def unsig(ctx: SlashContext, number: str):
+async def unsig(ctx: SlashContext, number: str, animation=False):
         
     if ctx.channel.name == "general":
         await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
@@ -930,14 +946,31 @@ async def unsig(ctx: SlashContext, number: str):
 
         embed_props(embed, unsigs_data)
 
-        image_url = await get_ipfs_url_from_file(asset_name)
+        num_props = unsigs_data.get("num_props")
+        if animation and num_props > 1:
+            try:
+                image_path = f"img/animation_{number}.gif"
+                
+                await gen_animation(number, mode=animation)
 
+                image_file = discord.File(image_path, filename="image.gif")
+                if image_file:
+                    embed.set_image(url="attachment://image.gif")
+                delete_image_files(IMAGE_PATH, suffix="gif")
+            except:
+                print("Animation failed!")
+                pass
+            else:
+                embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+                await ctx.send(file=image_file, embed=embed)
+                return 
+
+        image_url = await get_ipfs_url_from_file(asset_name)
         if image_url:
             embed.set_image(url=image_url)
 
-
         embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
- 
+
         await ctx.send(embed=embed)
 
 @slash.slash(
