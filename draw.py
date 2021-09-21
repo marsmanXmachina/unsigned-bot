@@ -310,29 +310,34 @@ async def gen_animation(idx, mode="fade"):
         new_layer = image_from_ndarray(n)
         images.append(new_layer)
 
+    if mode == "blend":
+        DURATION_FRAME =  50
+    else:
+        DURATION_FRAME = 100
+
     images_faded = list()
+    durations = list()
     for i in range(len(images)):
         if i == 0:
             continue
         
         if mode =="blend":
-            images_faded.extend([Image.composite(images[i],images[i-1],mask) for mask in v_blend()])
+            new_frames = [Image.composite(images[i],images[i-1],mask) for mask in v_blend()]
         else:
-            images_faded.extend([Image.composite(images[i],images[i-1],mask) for mask in v_fade()])
+            new_frames = [Image.composite(images[i],images[i-1],mask) for mask in v_fade()]
 
+        images_faded.extend(new_frames)
+
+        duration_frames = [DURATION_FRAME] * len(new_frames)
+        duration_frames[-1] = 1000
+        durations.extend(duration_frames)
     
-    base_layer = images[0]
-
-    if mode == "blend":
-        duration = 50
-    else:
-        duration = 100
-
-    durations = [duration] * (len(images_faded)+1)
-    durations[-0] = 500
+    durations[0] = 1000
     durations[-1] = 2000
+    
+    base_layer = images_faded[0]
 
-    base_layer.save(f"img/animation_{idx}.gif", format="GIF",  append_images=images_faded, save_all=True, duration=durations, loop=0)
+    base_layer.save(f"img/animation_{idx}.gif", format="GIF",  append_images=images_faded[1:], save_all=True, duration=durations, loop=0)
 
 def delete_image_files(path, suffix="png"):
     for file in os.scandir(path):
