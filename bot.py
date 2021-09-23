@@ -776,7 +776,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
     embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
     embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
-    embed.add_field(name="/matches", value="show available matches on marketplace", inline=False)
+    embed.add_field(name="/matches + `integer`", value="show available matches on marketplace", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -1489,8 +1489,8 @@ async def fetch_data():
     
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            await asyncio.sleep(2)
-            await post_sales(new_sales)
+            # await asyncio.sleep(2)
+            # await post_sales(new_sales)
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:

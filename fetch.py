@@ -86,13 +86,14 @@ async def fetch_data_from_marketplace(url, policy_id, sold=False):
         print("Fetching data failed!")
         return
     else:
-        assets = get_data_from_reponses(responses)
-        if assets:
-            assets_parsed = parse_data(assets, sold)
+        if responses:
+            assets = get_data_from_reponses(responses)
+            if assets:
+                assets_parsed = parse_data(assets, sold)
 
-            assets_extended = add_num_props(assets_parsed)
+                assets_extended = add_num_props(assets_parsed)
 
-            return assets_extended
+                return assets_extended
 
 
 def get_data_from_reponses(responses):
