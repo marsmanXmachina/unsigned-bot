@@ -345,3 +345,52 @@ def delete_image_files(path, suffix="png"):
             os.unlink(file.path)
 
 
+async def gen_grid_with_matches(best_matches):
+
+    unsigs_data = load_json("json/unsigs.json")
+
+    padding = 50
+    margin = 2
+
+    unsig_width, unsig_height = DIM, DIM
+
+    unsig_box_width = unsig_box_height = (unsig_width+2*margin)
+
+    cols = rows = 3
+
+    image_width = unsig_box_width*cols + 2*padding
+    image_height = unsig_box_height*rows + 2*padding
+
+    left_x = padding + margin
+    top_x = center_x = bottom_x = left_x + unsig_box_width
+    right_x = left_x + unsig_box_width * 2
+
+    top_y = margin + padding
+    left_y = center_y = right_y = top_y + unsig_box_width
+    bottom_y = top_y + unsig_box_width * 2
+
+    positions = {
+        "top": (top_x, top_y),
+        "left": (left_x, left_y),
+        "right": (right_x, right_y),
+        "bottom": (bottom_x, bottom_y),
+        "center": (center_x, center_y)
+    }
+
+    grid = Image.new("RGB", (image_width, image_height))
+
+    for side, number in best_matches.items():
+        data = unsigs_data.get(str(int(number)))
+        image_array = gen_image_array(data)
+        image = Image.fromarray(image_array)
+
+        position = positions.get(side)
+
+        grid.paste(image, position)
+        image.close()
+
+
+    unsigs_str = best_matches.get("center")
+    path = f"img/matches_{unsigs_str}.png"
+    grid.save(path)
+

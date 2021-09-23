@@ -25,14 +25,16 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-from draw import gen_evolution, gen_grid, gen_animation, delete_image_files
+from draw import gen_evolution, gen_grid, gen_animation, gen_grid_with_matches, delete_image_files
 
 from fetch import fetch_data_from_marketplace
 
-INVERVAL_LOOP=900
+from matching import match_unsig, choose_best_matches
 
 from dotenv import load_dotenv
 load_dotenv() 
+
+INVERVAL_LOOP=900
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
@@ -84,11 +86,22 @@ EMOJI_NUMBERS = "\U0001F522"
 EMOJI_PALETTE = "\U0001F3A8"
 EMOJI_ARROW_DOWN = "\u2B07"
 EMOJI_ARROW_RIGHT = "\u27A1"
+EMOJI_ARROW_LEFT = "\u2B05"
+EMOJI_ARROW_UP = "\u2B06"
 EMOJI_PARTY = "\U0001F389"
 EMOJI_WARNING = "\u26A0"
 EMOJI_ROBOT = "\U0001F916"
 EMOJI_BROOM = "\U0001F9F9"
 EMOJI_MONEYWINGS = "\U0001F4B8"
+EMOJI_PUZZLE = "\U0001F9E9"
+EMOJI_GLASS = "\U0001F50E"
+
+ARROWS = {
+    "top": EMOJI_ARROW_UP,
+    "left": EMOJI_ARROW_LEFT,
+    "right": EMOJI_ARROW_RIGHT,
+    "bottom": EMOJI_ARROW_DOWN
+}
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -181,6 +194,9 @@ def get_idx_from_asset_name(asset_name: str) -> int:
     number = match.group("number")
     if number:
         return int(number)
+
+def get_numbers_from_assets(assets: list) -> list:
+    return [get_idx_from_asset_name(asset.get("assetid")) for asset in assets]
 
 def get_asset_name_from_minting_order(idx:str):
     minting_order = load_json("json/minted.json")
@@ -377,7 +393,12 @@ def sum_prices(assets: list) -> float:
 def get_url_from_marketplace_id(marketplace_id: str) -> str:
     return f"https://cnft.io/token.php?id={marketplace_id}"
 
+def get_asset_from_number(number, assets: list) -> dict:
+    for asset in assets:
+        asset_number = asset.get("assetid").replace("unsig_", "")
 
+        if int(asset_number) == int(number):
+            return asset
 
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
@@ -604,6 +625,59 @@ def embed_sales(assets, prices_type, period):
     return embed
 
 
+def embed_matches(number, matches, best_matches, offers):
+
+    asset_name = get_asset_name_from_idx(number)
+
+    title = f"{EMOJI_PUZZLE} {asset_name} matches {EMOJI_PUZZLE}"
+    description="Available matches on marketplace"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    SIDES = ["top", "left", "right", "bottom"]
+
+    for side in SIDES:
+
+        arrow = ARROWS.get(side)
+        matches_str=""
+
+        matches_side = matches.get(side, None)
+
+        if matches_side:
+            for match in matches_side:
+                offer = get_asset_from_number(match, offers)
+                offer_id = offer.get("id")
+                marketplace_url = get_url_from_marketplace_id(offer_id)
+                match_str=f" [#{str(match).zfill(5)}]({marketplace_url}) "
+                matches_str += match_str
+        else:
+            matches_str="` - `"
+
+        embed.add_field(name=f"{arrow} {side.upper()} {arrow}", value=matches_str, inline=False)
+
+    
+    best_matches_str=""
+
+    for side in SIDES:
+        best_match = best_matches.get(side, None)
+        if best_match:
+            offer = get_asset_from_number(best_match, offers)
+            offer_id = offer.get("id")
+            marketplace_url = get_url_from_marketplace_id(offer_id)
+            best_match_str=f"[#{str(best_match).zfill(5)}]({marketplace_url})"
+        else:
+            best_match_str = "` - `"
+
+        arrow = ARROWS.get(side)
+        best_matches_str += f"{arrow} {best_match_str}\n" 
+
+    embed.add_field(name="Matches displayed", value=best_matches_str)
+
+    return embed
+    
+
+
 # @slash.slash(
 #     name="fund", 
 #     description="message to raise funds", 
@@ -702,6 +776,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
     embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
     embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
+    embed.add_field(name="/matches", value="show available matches on marketplace", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -776,7 +851,68 @@ async def sales(ctx: SlashContext, prices=None, period=None):
     else:
         await ctx.send(content=f"Currently no sales data available...")
         return
-       
+
+@slash.slash(
+    name="matches", 
+    description="show available matches on marketplace", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="number of unsig you want to match",
+            required=True,
+            option_type=3,
+        )
+    ]    
+)
+async def matches(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+        return
+    else:
+
+
+        if bot.offers:
+            offers_numbers = get_numbers_from_assets(bot.offers)
+
+            matches = match_unsig(number, offers_numbers)
+            best_matches = choose_best_matches(number, matches)
+
+            embed = embed_matches(number, matches, best_matches, bot.offers)
+
+            UNSIG_MATCHBOX_LINK = "https://discord.gg/RR8rhNH2"
+            matchbox_text = f"For deeper analysis checkout [unsig_matchbox]({UNSIG_MATCHBOX_LINK})"
+
+            embed.add_field(name=f"{EMOJI_GLASS} Portfolio Analysis {EMOJI_GLASS}", value=matchbox_text, inline=False)
+
+            add_disclaimer(embed, bot.offers_updated)
+
+            try:
+                image_path = f"img/matches_{int(number)}.png"
+                
+                await gen_grid_with_matches(best_matches)
+
+                image_file = discord.File(image_path, filename="matches.png")
+                if image_file:
+                    embed.set_image(url="attachment://matches.png")
+                delete_image_files(IMAGE_PATH)
+            except:
+                await ctx.send(content=f"I can't generate the matches of your unsig.")
+                return
+            else:
+                await ctx.send(file=image_file, embed=embed)
+
+        else:
+            await ctx.send(content=f"Currently no marketplace data available...")
+            return
+
 
 @slash.slash(
     name="floor", 
