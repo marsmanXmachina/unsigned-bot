@@ -1489,8 +1489,8 @@ async def fetch_data():
     
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            # await asyncio.sleep(2)
-            # await post_sales(new_sales)
+            await asyncio.sleep(2)
+            await post_sales(new_sales)
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
