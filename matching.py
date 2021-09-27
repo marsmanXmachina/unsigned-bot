@@ -214,6 +214,10 @@ def side_is_black(layer: tuple, side: str) -> bool:
 
 def mirror_layer(layer: tuple, direction: str) -> tuple:
     rotation = layer[2]
+    distribution = layer[3]
+    if distribution == "Normal":
+        return layer
+
     if direction == "horizontal":
         if rotation in [0, 180]:
             new_rotation = 0 if rotation == 180 else 180
@@ -238,8 +242,13 @@ def mirror_layers(layers: list, direction: str) -> list:
     return mirrored
 
 def rotate_layer(layer, rotation_diff):
+    distribution = layer[3]
     rotated = list(layer) 
-    rotated[2] = (layer[2] + rotation_diff) % 360
+    if distribution == "Normal":
+        rotated[2] = (layer[2] + rotation_diff) % 180
+    else:
+        rotated[2] = (layer[2] + rotation_diff) % 360
+
     return tuple(rotated)
 
 def rotate_layers(layers: list, rotation_diff: str) -> list:
@@ -257,7 +266,9 @@ def get_similar_unsigs(number, numbers, structural=True):
     idx = int(number)
     u1 = unsigs.get(str(idx)) 
 
-    num1_props = u1.get("num_props")  
+    num1_props = u1.get("num_props") 
+    if num1_props == 0:
+        return 
 
     for num in numbers:
         if idx!=num:

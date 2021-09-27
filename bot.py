@@ -678,7 +678,7 @@ def embed_related(number, related, selected, sales, cols=3):
 def embed_siblings(number, siblings, selected, offers, cols=2):
     asset_name = get_asset_name_from_idx(number)
 
-    title = f"{EMOJI_DNA} like {asset_name} {EMOJI_DNA}"
+    title = f"{EMOJI_DNA} siblings {asset_name} {EMOJI_DNA}"
     description="Siblings of your unsig"
     color=discord.Colour.dark_blue()
 
@@ -715,7 +715,7 @@ def embed_siblings(number, siblings, selected, offers, cols=2):
         displayed_str = ""
 
         for i, num in enumerate(selected):
-            displayed_str += f"#{str(num).zfill(5)}"
+            displayed_str += f" #{str(num).zfill(5)} "
 
             if (i+1) % cols == 0:
                 displayed_str += "\n"
