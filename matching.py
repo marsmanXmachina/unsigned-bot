@@ -355,7 +355,7 @@ def check_structural_similarity(layers1, layers2):
         if check(mirrored, layers2):
             return True
 
-def get_subpattern(layers) -> dict:
+def get_subpattern(layers: list) -> dict:
 
     layers_by_color = order_by_color(layers)
     

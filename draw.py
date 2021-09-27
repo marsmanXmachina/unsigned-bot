@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from files_util import load_json
+from matching import order_by_color, get_prop_layers
 
 DIM = 512
 BORDER = 10
@@ -212,6 +213,83 @@ async def gen_evolution(idx, show_single_layers=True, extended=False):
 
     print(f" Saved to => {path}")
 
+async def gen_subpattern(idx):
+    PADDING = 150
+
+    COLORS = ["Red", "Green", "Blue"]
+
+    unsig_data = load_unsig_data(idx)
+
+    num_props = unsig_data.get("num_props")
+
+    layers = get_prop_layers(unsig_data)
+    ordered_by_color = order_by_color(layers)
+
+    images = list()
+    n_res = None
+
+    for color in COLORS:
+        n_color = None
+        color_layers = ordered_by_color.get(color)
+        num_colors = len(ordered_by_color.keys())
+        if not color_layers:
+            continue
+
+        for layer in color_layers:
+            col, mult, rot, dist = layer
+            c = channels[col]
+
+            if n_color is None:
+                n_color = gen_layer(mult, dist, rot, c)
+            else:
+                n_color = add_layer(n_color, mult, dist, rot, c)
+
+            if n_res is None:
+                n_res = gen_layer(mult, dist, rot, c)
+            else:
+                n_res = add_layer(n_res, mult, dist, rot, c)
+        else:
+            sub_image = generate_image(n_color)
+            images.append(sub_image)
+    else:
+        if num_colors > 1:
+            image = generate_image(n_res)
+            images.append(image)        
+
+    subpattern = None
+
+    x_offset = PADDING
+    y_offset = PADDING  
+
+    for image_idx, image in enumerate(images):
+        image = image.rotate(180)
+        layer_width, layer_height = image.size
+        shift = int(layer_height * 0.8)
+
+        if not subpattern:
+            total_width = layer_width+2*PADDING
+            if num_colors > 1:
+                total_height = 2*PADDING+layer_height+shift*(num_colors)
+            else:
+                total_height = 2*PADDING+layer_height
+
+            subpattern = Image.new(mode="RGBA", size=(total_width, total_height), color="black")
+
+        mask = Image.new(mode="RGBA", size=subpattern.size)
+        mask.paste(image, (x_offset, y_offset))
+        image.close()
+
+        subpattern = Image.alpha_composite(subpattern, mask)
+        mask.close()
+
+        y_offset += shift
+    
+    subpattern = subpattern.rotate(180)
+    path = f'img/subpattern_{idx}.png'
+    subpattern.save(path)
+    subpattern.close()
+
+
 async def gen_grid(unsigs: list, cols):
 
     unsigs_data = load_json("json/unsigs.json")
@@ -393,4 +471,5 @@ async def gen_grid_with_matches(best_matches):
     unsigs_str = best_matches.get("center")
     path = f"img/matches_{unsigs_str}.png"
     grid.save(path)
+
 

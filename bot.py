@@ -26,7 +26,7 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-from draw import gen_evolution, gen_grid, gen_animation, gen_grid_with_matches, delete_image_files
+from draw import gen_evolution, gen_subpattern, gen_grid, gen_animation, gen_grid_with_matches, delete_image_files
 
 from fetch import fetch_data_from_marketplace
 
@@ -817,6 +817,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
     embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
+    embed.add_field(name="/sub + `integer`", value="show subpattern of your unsig", inline=False)
     embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
@@ -937,7 +938,7 @@ async def siblings(ctx: SlashContext, number: str):
 
         embed = embed_siblings(number, siblings_numbers, selected_numbers, bot.offers, cols=2)
 
-        if bot.offers:
+        if bot.offers and siblings_numbers:
             add_disclaimer(embed, bot.offers_updated)
 
         if not siblings_numbers:
@@ -1361,6 +1362,54 @@ async def show(ctx: SlashContext, numbers: str, columns: str = None):
     
 
 @slash.slash(
+    name="subs", 
+    description="show subpattern of unsig with given number", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="Number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def subs(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+    else:
+
+        number = str(int(number))
+
+        title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
+        description="Explore the subpattern of your unsig..."
+        color=discord.Colour.dark_blue()
+
+        embed = discord.Embed(title=title, description=description, color=color)
+
+        try:
+            image_path = f"img/subpattern_{number}.png"
+            
+            await gen_subpattern(number)
+
+            image_file = discord.File(image_path, filename="image.png")
+            if image_file:
+                embed.set_image(url="attachment://image.png")
+            delete_image_files(IMAGE_PATH)
+        except:
+            await ctx.send(content=f"I can't generate the subpattern of your unsig.")
+            return
+        else:
+            await ctx.send(file=image_file, embed=embed)
+
+@slash.slash(
     name="invo", 
     description="show ingredients of unsig with given number", 
     guild_ids=GUILD_IDS,
@@ -1656,8 +1705,8 @@ async def fetch_data():
     
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            await asyncio.sleep(2)
-            await post_sales(new_sales)
+            # await asyncio.sleep(2)
+            # await post_sales(new_sales)
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
