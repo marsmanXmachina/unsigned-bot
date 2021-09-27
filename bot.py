@@ -634,11 +634,13 @@ def embed_related(number, related, selected, sales, cols=3):
 
     embed = discord.Embed(title=title, description=description, color=color)
 
+    LIMIT_SALES = 13
+
     if not related:
         related_str = "` - `"
     else:
         related_str = ""
-        for num in related:
+        for num in related[:LIMIT_SALES]:
             sale = get_asset_from_number(num, sales)
             price = sale.get("price")
             price = price/1000000
@@ -649,7 +651,7 @@ def embed_related(number, related, selected, sales, cols=3):
 
             related_str += sale_str
 
-    embed.add_field(name=f"Sale prices of similar unsigs", value=related_str, inline=False)
+    embed.add_field(name=f"Sales of similar unsigs", value=related_str, inline=False)
 
     if related:
         selected_str = ""
@@ -874,7 +876,7 @@ async def like(ctx: SlashContext, number: str):
 
             related_numbers = list(set().union(*similar_unsigs.values()))
 
-            selection_size = 12 if len(related_numbers) > 12 else len(related_numbers)
+            selection_size = 11 if len(related_numbers) > 11 else len(related_numbers)
             selected_numbers = random.sample(related_numbers, selection_size)
             selected_numbers.insert(0, int(number))
 
@@ -1039,8 +1041,9 @@ async def sell(ctx: SlashContext, number: str, price: str):
             try:
                 price = float(price)
             except:
-                await ctx.send(content=f"Please enter price for sale!")
-                return
+                price_str = "???"
+                # await ctx.send(content=f"Please enter price for sale!")
+                # return
             else:
                 price_str = f"₳{price:,.0f}"
 
