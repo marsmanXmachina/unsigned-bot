@@ -97,6 +97,7 @@ EMOJI_MONEYWINGS = "\U0001F4B8"
 EMOJI_PUZZLE = "\U0001F9E9"
 EMOJI_GLASS = "\U0001F50E"
 EMOJI_MIRROW = "\U0001FA9E"
+EMOJI_DNA = "\U0001F9EC"
 
 ARROWS = {
     "top": EMOJI_ARROW_UP,
@@ -313,6 +314,8 @@ def get_unsig_url(number: str):
 
 def get_numbers_from_string(string):
     return re.findall(r"\d+", string)
+
+
 
 def order_by_num_props(assets: list) -> dict:
     ordered = defaultdict(list)
@@ -634,20 +637,23 @@ def embed_related(number, related, selected, sales, cols=3):
 
     embed = discord.Embed(title=title, description=description, color=color)
 
-    LIMIT_SALES = 13
+    related_sales = [sale for sale in sales if get_idx_from_asset_name(sale.get("assetid")) in related]
 
+    last_related_sales = related_sales[:10]
+    
     if not related:
         related_str = "` - `"
     else:
         related_str = ""
-        for num in related[:LIMIT_SALES]:
-            sale = get_asset_from_number(num, sales)
+        for i, sale in enumerate(last_related_sales):
+            asset_name = sale.get("assetid")
+            asset_number = get_idx_from_asset_name(asset_name)
             price = sale.get("price")
             price = price/1000000
             timestamp_ms = sale.get("date")
             dt = timestamp_to_datetime(timestamp_ms)
 
-            sale_str = f"#{str(num).zfill(5)} sold for **₳{price:,.0f}** on {dt.date()}\n"
+            sale_str = f"#{str(asset_number).zfill(5)} sold for **₳{price:,.0f}** on {dt.date()}\n"
 
             related_str += sale_str
 
@@ -666,6 +672,55 @@ def embed_related(number, related, selected, sales, cols=3):
                 selected_str += "\n"
 
         embed.add_field(name=f"{EMOJI_ARROW_DOWN} Unsigs displayed {EMOJI_ARROW_DOWN}", value=selected_str, inline=False)
+
+    return embed
+
+def embed_siblings(number, siblings, selected, offers, cols=2):
+    asset_name = get_asset_name_from_idx(number)
+
+    title = f"{EMOJI_DNA} like {asset_name} {EMOJI_DNA}"
+    description="Siblings of your unsig"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    if offers:
+        offers_str = ""
+        offers_numbers = get_numbers_from_assets(offers)
+        siblings_offers = [num for num in siblings if num in offers_numbers]
+        if siblings_offers:
+            for num in siblings_offers:
+                offer = get_asset_from_number(num, offers)
+                price = offer.get("price")/1000000
+                marketplace_id = offer.get("id")
+                siblings_str = link_asset_to_marketplace(num, marketplace_id)
+                offers_str += f"{siblings_str} for **₳{price:,.0f}**\n"
+        else:
+            offers_str = "` - `"
+    else:
+        offers_str = "` - `"
+
+    embed.add_field(name="on marketplace", value=offers_str, inline=False)
+
+    if siblings:
+        collection_str = ""
+        for num in siblings:
+            collection_str += f"#{str(num).zfill(5)}\n"
+    else:
+        collection_str = "` - `"
+
+    embed.add_field(name="in ENTIRE collection", value=collection_str, inline=False)
+
+    if siblings:
+        displayed_str = ""
+
+        for i, num in enumerate(selected):
+            displayed_str += f"#{str(num).zfill(5)}"
+
+            if (i+1) % cols == 0:
+                displayed_str += "\n"
+
+        embed.add_field(name=f"{EMOJI_ARROW_DOWN} Unsigs displayed {EMOJI_ARROW_DOWN}", value=displayed_str, inline=False)
 
     return embed
 
@@ -768,6 +823,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
     embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
     embed.add_field(name="/matches + `integer`", value="show available matches on marketplace", inline=False)
+    embed.add_field(name="/siblings + `integer`", value="show sbilings of your unsig", inline=False)
     embed.add_field(name="/like + `integer`", value="show related unsigs sold", inline=False)
     
     await ctx.send(embed=embed)
@@ -845,6 +901,66 @@ async def sales(ctx: SlashContext, prices=None, period=None):
         return
 
 @slash.slash(
+    name="siblings", 
+    description="show siblings of your unsig", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]    
+)
+async def siblings(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+        return
+    else:
+
+        collection_numbers = range(0,31119)
+
+        similar_unsigs = get_similar_unsigs(number, collection_numbers, structural=False)
+
+        siblings_numbers = list(set().union(*similar_unsigs.values()))
+
+        selected_numbers = siblings_numbers[:]
+        selected_numbers.insert(0, int(number))
+
+        embed = embed_siblings(number, siblings_numbers, selected_numbers, bot.offers, cols=2)
+
+        if bot.offers:
+            add_disclaimer(embed, bot.offers_updated)
+
+        if not siblings_numbers:
+            await ctx.send(embed=embed)
+            return
+
+        try:
+            image_path = f"img/grid_{''.join(map(str, selected_numbers))}.png"
+            
+            await gen_grid(selected_numbers, cols=2)
+
+            image_file = discord.File(image_path, filename="siblings.png")
+            if image_file:
+                embed.set_image(url="attachment://siblings.png")
+            delete_image_files(IMAGE_PATH)
+        except:
+            await ctx.send(content=f"I can't generate the siblings of your unsig.")
+            return
+        else:
+            await ctx.send(file=image_file, embed=embed)
+
+
+@slash.slash(
     name="like", 
     description="show related unsigs sold", 
     guild_ids=GUILD_IDS,
@@ -871,16 +987,18 @@ async def like(ctx: SlashContext, number: str):
     else:
         if bot.sales:
             sales_numbers = get_numbers_from_assets(bot.sales)
+            sales_by_date = sort_sales_by_date(bot.sales, descending=True)
 
             similar_unsigs = get_similar_unsigs(number, sales_numbers)
 
             related_numbers = list(set().union(*similar_unsigs.values()))
 
-            selection_size = 11 if len(related_numbers) > 11 else len(related_numbers)
-            selected_numbers = random.sample(related_numbers, selection_size)
+            LIMIT_DISPLAY = 8
+            related_numbers = related_numbers[:LIMIT_DISPLAY]
+            selected_numbers = related_numbers[:]
             selected_numbers.insert(0, int(number))
 
-            embed = embed_related(number, related_numbers, selected_numbers, bot.sales, cols=3)
+            embed = embed_related(number, related_numbers, selected_numbers, sales_by_date, cols=3)
 
             add_disclaimer(embed, bot.sales_updated)
 
