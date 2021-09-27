@@ -3,10 +3,10 @@ import random
 
 from collections import defaultdict
 
-from files_util import load_json, save_json
+from files_util import load_json
 
 
-def choose_best_matches(number, matches):
+def choose_best_matches(number: str, matches: dict) -> dict:
 
     best_matches = dict()
 
@@ -21,7 +21,7 @@ def choose_best_matches(number, matches):
 
     return best_matches
 
-def match_unsig(number, numbers):
+def match_unsig(number: str, numbers: list) -> dict:
     matches = defaultdict(list)
 
     unsigs = load_json("json/unsigs.json")
@@ -43,7 +43,7 @@ def match_unsig(number, numbers):
     return matches
 
 
-def get_matches(udata1, udata2):
+def get_matches(udata1: dict, udata2: dict) -> list:
 
     SIDES = ["top", "left", "right", "bottom"]
     COLORS = ["Red", "Green", "Blue"]
@@ -131,7 +131,7 @@ def get_matches(udata1, udata2):
 
     return matches   
 
-def get_prop_layers(unsig_data):
+def get_prop_layers(unsig_data: dict) -> list:
     props = unsig_data.get("properties")
 
     multipliers = props.get("multipliers")
@@ -141,7 +141,7 @@ def get_prop_layers(unsig_data):
 
     return list(zip(colors, multipliers, rotations, distributions))
 
-def order_by_color(layers):
+def order_by_color(layers: list) -> dict:
     ordered = defaultdict(list)
 
     for layer in layers:
@@ -150,7 +150,7 @@ def order_by_color(layers):
     
     return ordered
 
-def get_opposite_side(side):
+def get_opposite_side(side:str) -> str:
     opposite_sides = {
         "left": "right",
         "right": "left",
@@ -160,10 +160,10 @@ def get_opposite_side(side):
 
     return opposite_sides.get(side)
 
-def get_rotations_from_direction(direction):
+def get_rotations_from_direction(direction: str) -> list:
     return [0, 180] if direction == "vertical" else [90, 270]
 
-def get_side_value(layer, side):
+def get_side_value(layer: tuple, side: str):
     try:
         dist = layer[3]
         rot = layer[2]
@@ -184,7 +184,7 @@ def get_side_value(layer, side):
         else:
             return None
 
-def get_black_sides(layer):
+def get_black_sides(layer: tuple) -> list:
     try:
         dist = layer[3]
         rot = layer[2]
@@ -208,11 +208,11 @@ def get_black_sides(layer):
             black_sides = rotations.get(rot)
             return black_sides
 
-def side_is_black(layer, side):
+def side_is_black(layer: tuple, side: str) -> bool:
     black_sides = get_black_sides(layer)
     return True if side in black_sides else False
 
-def mirror_layer(layer, direction):
+def mirror_layer(layer: tuple, direction: str) -> tuple:
     rotation = layer[2]
     if direction == "horizontal":
         if rotation in [0, 180]:
@@ -228,3 +228,133 @@ def mirror_layer(layer, direction):
     new_layer = list(layer)
     new_layer[2] = new_rotation
     return tuple(new_layer)
+
+def mirror_layers(layers: list, direction: str) -> list:
+    mirrored = list()
+
+    for layer in layers:
+        mirrored.append(mirror_layer(layer, direction))
+    
+    return mirrored
+
+def rotate_layer(layer, rotation_diff):
+    rotated = list(layer) 
+    rotated[2] = (layer[2] + rotation_diff) % 360
+    return tuple(rotated)
+
+def rotate_layers(layers: list, rotation_diff: str) -> list:
+    rotated = list()
+    for layer in layers:
+        rotated.append(rotate_layer(layer, rotation_diff))
+    return rotated
+
+
+def get_similar_unsigs(number, numbers):
+    unsigs = load_json("json/unsigs.json")
+
+    similar_unsigs = defaultdict(list)
+
+    idx = int(number)
+    u1 = unsigs.get(str(idx)) 
+
+    num1_props = u1.get("num_props")  
+
+    for num in numbers:
+        if idx!=num:
+            u2 = unsigs.get(str(num))
+            num2_props = u2.get("num_props") 
+            if num1_props != num2_props:
+                continue
+            else:
+                similarity = check_similarity(u1, u2) 
+                if similarity:
+                    similar_unsigs[similarity].append(num)
+    
+    return similar_unsigs
+
+def check_similarity(u1_data, u2_data, structural=True):
+
+    layers1 = get_prop_layers(u1_data)
+    layers2 = get_prop_layers(u2_data)
+    
+    if check_axial_symmetry(layers1, layers2):
+        return "axial_symmetry"
+
+    if check_point_symmetry(layers1, layers2):
+        return "point_symmetry"
+
+    if structural:
+        if check_structural_similarity(layers1, layers2):
+            return "structural_similarity"
+
+def check_axial_symmetry(layers1, layers2):
+    directions = ["horizontal", "vertical"]
+
+    for direction in directions:
+        mirrored = mirror_layers(layers1, direction)
+        if sorted(mirrored) == sorted(layers2):
+            return True
+    else:
+        return False 
+
+def check_point_symmetry(layers1, layers2):
+    rotations = [90, 180, 270]
+
+    for rotation in rotations:
+        rotated = rotate_layers(layers1, rotation)
+        if sorted(rotated) == sorted(layers2):
+            return True
+    else:
+        return False
+
+def check_structural_similarity(layers1, layers2):
+
+    def check(layers1, layers2):
+        subpattern1 = get_subpattern(layers1)
+        subpattern2 = get_subpattern(layers2)
+
+        formatted1 = format_subpattern(subpattern1)
+        formatted2 = format_subpattern(subpattern2)
+
+        for subpattern in formatted1:
+            if subpattern in formatted2:
+                continue
+            else:
+                return False
+        else:
+            return True
+
+    rotations = [0, 90, 180, 270]
+
+    for rotation in rotations:
+        rotated = rotate_layers(layers1, rotation)
+        if check(rotated, layers2):
+            return True
+    
+    directions = ["horizontal", "vertical"]
+
+    for direction in directions:
+        mirrored = mirror_layers(layers1, direction)
+        if check(mirrored, layers2):
+            return True
+
+def get_subpattern(layers) -> dict:
+
+    layers_by_color = order_by_color(layers)
+    
+    subpattern = defaultdict(list)        
+    for color, color_layers in layers_by_color.items():
+        for layer in color_layers:
+            layer_formatted = list(layer)
+            layer_formatted[0] = None
+            subpattern[color].append(tuple(layer_formatted))
+    
+    return subpattern
+
+def format_subpattern(subpattern):
+    formatted = list()
+
+    for _, color_layers in subpattern.items():
+        formatted.append(sorted(color_layers))
+
+    return formatted

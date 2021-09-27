@@ -1,5 +1,6 @@
 import os
 import math
+import random
 import re
 import json
 import time
@@ -29,7 +30,7 @@ from draw import gen_evolution, gen_grid, gen_animation, gen_grid_with_matches, 
 
 from fetch import fetch_data_from_marketplace
 
-from matching import match_unsig, choose_best_matches
+from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -95,6 +96,7 @@ EMOJI_BROOM = "\U0001F9F9"
 EMOJI_MONEYWINGS = "\U0001F4B8"
 EMOJI_PUZZLE = "\U0001F9E9"
 EMOJI_GLASS = "\U0001F50E"
+EMOJI_MIRROW = "\U0001FA9E"
 
 ARROWS = {
     "top": EMOJI_ARROW_UP,
@@ -115,65 +117,7 @@ INVERVALS_IN_DAYS = {
     "month": 30,
 }
 
-async def get_sales_data(policy_id) -> list:
-    """Get data of sold pioneers from cnft.io marketplace"""
-
-    sales = list()
-
-    url = "https://api.cnft.io/market/listings"
-
-    payload = {
-        "search": policy_id,
-        "sort": "date",
-        "order": "desc",
-        "page": 1,
-        "verified": "true",
-        "sold": "true",
-        "count": 200
-    }
-
-    total_amount = None
-    next_page = True
-    while next_page:
-        
-        try:
-            response = requests.post(url, payload).json()
-        except:
-            return sales
-        else:
-
-            if isinstance(response, dict):
-                if not total_amount:
-                    total_amount = response.get('found')
-
-                assets = response.get('assets')
-            else:
-                return sales
-            
-            if assets:
-                sales.extend(assets)
-            else:
-                next_page = False
-
-            print(f"{len(assets)} assets found on sales page {payload['page']}")
-            payload["page"] += 1
-
-    return sales
     
-
-def extract_sales_data(assets_data):
-    sales_data = list()
-
-    for asset in assets_data:
-        sales_data.append({
-            "assetid": asset.get("metadata").get("name"),
-            "date": asset.get("dateSold"),
-            "unit": asset.get("unit"),
-            "price": asset.get("price")
-        })
-    
-    return sales_data
-
 def get_asset_id(asset_name) -> str:
     asset_ids = load_json("json/asset_ids.json")
     return asset_ids.get(asset_name, None)
@@ -400,6 +344,10 @@ def get_asset_from_number(number, assets: list) -> dict:
         if int(asset_number) == int(number):
             return asset
 
+def link_asset_to_marketplace(number: str, marketplace_id: str):
+    url = get_url_from_marketplace_id(marketplace_id)
+    return f" [#{str(number).zfill(5)}]({url}) "
+
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
 bot.sales_updated = None
@@ -539,7 +487,6 @@ def embed_policy():
 
     return embed
 
-
 def embed_offers(assets_ordered: dict):
     title = f"{EMOJI_BROOM} Unsigs Floor {EMOJI_BROOM}"
     description="Cheapest unsigs on marketplace"
@@ -624,7 +571,6 @@ def embed_sales(assets, prices_type, period):
 
     return embed
 
-
 def embed_matches(number, matches, best_matches, offers):
 
     asset_name = get_asset_name_from_idx(number)
@@ -656,6 +602,9 @@ def embed_matches(number, matches, best_matches, offers):
 
         embed.add_field(name=f"{arrow} {side.upper()} {arrow}", value=matches_str, inline=False)
 
+    UNSIG_MATCHBOX_LINK = "https://discord.gg/RR8rhNH2"
+    matchbox_text = f"For deeper analysis checkout [unsig_matchbox]({UNSIG_MATCHBOX_LINK})"
+    embed.add_field(name=f"{EMOJI_GLASS} Portfolio Analysis {EMOJI_GLASS}", value=matchbox_text, inline=False)
     
     best_matches_str=""
 
@@ -676,7 +625,47 @@ def embed_matches(number, matches, best_matches, offers):
 
     return embed
     
+def embed_related(number, related, selected, sales, cols=3):
+    asset_name = get_asset_name_from_idx(number)
 
+    title = f"{EMOJI_MIRROW} like {asset_name} {EMOJI_MIRROW}"
+    description="Related unsigs sold"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    if not related:
+        related_str = "` - `"
+    else:
+        related_str = ""
+        for num in related:
+            sale = get_asset_from_number(num, sales)
+            price = sale.get("price")
+            price = price/1000000
+            timestamp_ms = sale.get("date")
+            dt = timestamp_to_datetime(timestamp_ms)
+
+            sale_str = f"#{str(num).zfill(5)} sold for **₳{price:,.0f}** on {dt.date()}\n"
+
+            related_str += sale_str
+
+    embed.add_field(name=f"Sale prices of similar unsigs", value=related_str, inline=False)
+
+    if related:
+        selected_str = ""
+
+        for i, num in enumerate(selected):
+
+            displayed_str = f" #{str(num).zfill(5)} "
+            
+            selected_str += displayed_str
+
+            if (i+1) % cols == 0:
+                selected_str += "\n"
+
+        embed.add_field(name=f"{EMOJI_ARROW_DOWN} Unsigs displayed {EMOJI_ARROW_DOWN}", value=selected_str, inline=False)
+
+    return embed
 
 # @slash.slash(
 #     name="fund", 
@@ -777,6 +766,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
     embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
     embed.add_field(name="/matches + `integer`", value="show available matches on marketplace", inline=False)
+    embed.add_field(name="/like + `integer`", value="show related unsigs sold", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -853,6 +843,69 @@ async def sales(ctx: SlashContext, prices=None, period=None):
         return
 
 @slash.slash(
+    name="like", 
+    description="show related unsigs sold", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]    
+)
+async def like(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+        return
+    else:
+        if bot.sales:
+            sales_numbers = get_numbers_from_assets(bot.sales)
+
+            similar_unsigs = get_similar_unsigs(number, sales_numbers)
+
+            related_numbers = list(set().union(*similar_unsigs.values()))
+
+            selection_size = 12 if len(related_numbers) > 12 else len(related_numbers)
+            selected_numbers = random.sample(related_numbers, selection_size)
+            selected_numbers.insert(0, int(number))
+
+            embed = embed_related(number, related_numbers, selected_numbers, bot.sales, cols=3)
+
+            add_disclaimer(embed, bot.sales_updated)
+
+            if not related_numbers:
+                await ctx.send(embed=embed)
+                return
+
+            try:
+                image_path = f"img/grid_{''.join(map(str, selected_numbers))}.png"
+                
+                await gen_grid(selected_numbers, cols=3)
+
+                image_file = discord.File(image_path, filename="related.png")
+                if image_file:
+                    embed.set_image(url="attachment://related.png")
+                delete_image_files(IMAGE_PATH)
+            except:
+                await ctx.send(content=f"I can't generate the related of your unsig.")
+                return
+            else:
+                await ctx.send(file=image_file, embed=embed)
+
+        else:
+            await ctx.send(content=f"Currently no sales data available...")
+            return
+
+@slash.slash(
     name="matches", 
     description="show available matches on marketplace", 
     guild_ids=GUILD_IDS,
@@ -877,8 +930,6 @@ async def matches(ctx: SlashContext, number: str):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
         return
     else:
-
-
         if bot.offers:
             offers_numbers = get_numbers_from_assets(bot.offers)
 
@@ -886,11 +937,6 @@ async def matches(ctx: SlashContext, number: str):
             best_matches = choose_best_matches(number, matches)
 
             embed = embed_matches(number, matches, best_matches, bot.offers)
-
-            UNSIG_MATCHBOX_LINK = "https://discord.gg/RR8rhNH2"
-            matchbox_text = f"For deeper analysis checkout [unsig_matchbox]({UNSIG_MATCHBOX_LINK})"
-
-            embed.add_field(name=f"{EMOJI_GLASS} Portfolio Analysis {EMOJI_GLASS}", value=matchbox_text, inline=False)
 
             add_disclaimer(embed, bot.offers_updated)
 

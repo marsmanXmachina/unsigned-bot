@@ -237,7 +237,7 @@ async def gen_grid(unsigs: list, cols):
     unsig_idx = 0
     for row in range(rows):
         for col in range(cols):
-            data = unsigs_data.get(unsigs[unsig_idx])
+            data = unsigs_data.get(str(unsigs[unsig_idx]))
             image_array = gen_image_array(data)
             image = Image.fromarray(image_array)
 
@@ -253,8 +253,8 @@ async def gen_grid(unsigs: list, cols):
         offset_x = padding + margin
         offset_y += 2*margin+unsig_height
         
+    unsigs_str = "".join(map(str, unsigs))
     
-    unsigs_str = "".join(unsigs)
     path = f"img/grid_{unsigs_str}.png"
     grid.save(path)
 
