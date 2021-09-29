@@ -315,6 +315,10 @@ def check_point_symmetry(layers1, layers2):
         rotated = rotate_layers(layers1, rotation)
         if sorted(rotated) == sorted(layers2):
             return True
+
+        mirrored = mirror_layers(rotated, "vertical")    
+        if sorted(mirrored) == sorted(layers2):
+            return True        
     else:
         return False
 
