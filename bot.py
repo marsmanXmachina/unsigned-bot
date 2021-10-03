@@ -65,7 +65,6 @@ MARKETPLACES = {
 }
 
 DISCORD_ESCROWS = {
-    "Flowers for Lovelace": "https://discord.gg/P2Dssm9at2",
     "CNFT": "https://discord.gg/jpxXxMr8Dg",
     "CardanoNFT": "https://discord.gg/mWDTRdDMVk",
     "The Hoskinsons": "https://discord.gg/UvFyfsMgfP"
@@ -233,7 +232,6 @@ def get_minting_data(number: str):
 
     return (int(minting_order), int(minting_time))
     
-
 def get_current_owner_address(token_id: str) -> str:
     url = f"{CARDANOSCAN_URL}/token/{token_id}?tab=topholders"
 
@@ -257,7 +255,6 @@ def get_current_owner_address(token_id: str) -> str:
             }
     finally:
         return address
-
 
 def unsig_exists(number: str) -> bool:
     try:
@@ -297,6 +294,7 @@ def timestamp_to_datetime(timestamp_ms):
     dt = datetime.utcfromtimestamp(timestamp_ms/1000)
     return dt
 
+
 def filter_sales_by_asset(sales, asset_name):
     return [sale for sale in sales if sale.get("assetid").replace("_","") == asset_name]
 
@@ -314,8 +312,6 @@ def get_unsig_url(number: str):
 
 def get_numbers_from_string(string):
     return re.findall(r"\d+", string)
-
-
 
 def order_by_num_props(assets: list) -> dict:
     ordered = defaultdict(list)
@@ -351,6 +347,8 @@ def link_asset_to_marketplace(number: str, marketplace_id: str):
     url = get_url_from_marketplace_id(marketplace_id)
     return f" [#{str(number).zfill(5)}]({url}) "
 
+
+
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
 bot.sales_updated = None
@@ -364,7 +362,6 @@ async def on_ready():
     if not fetch_data.is_running():
         fetch_data.start()
     
-
     print("guilds", bot.guilds)
 
     bot.guild = discord.utils.find(lambda g: g.name == GUILD_NAME, bot.guilds)
@@ -420,7 +417,6 @@ def embed_props(embed, unsigs_data):
 
     rotations_str = ", ".join([str(r) for r in rotations])
     embed.add_field(name=f"{EMOJI_CIRCLE_ARROWS} Rotations {EMOJI_CIRCLE_ARROWS}", value=f"`{rotations_str}`", inline=False)
-
 
 def embed_subpattern(embed, number:str):
     try:
@@ -830,7 +826,6 @@ async def help(ctx: SlashContext):
     await ctx.send(embed=embed)
 
 
-
 @slash.slash(
     name="sales", 
     description="show data of sold unsigs on marketplace", 
@@ -1088,7 +1083,7 @@ async def matches(ctx: SlashContext, number: str):
 )
 async def floor(ctx: SlashContext):
         
-    if ctx.channel.name == "general":
+    if ctx.channel.name != "bot":
         await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
         return
     
@@ -1161,8 +1156,6 @@ async def sell(ctx: SlashContext, number: str, price: str):
                 price = float(price)
             except:
                 price_str = "???"
-                # await ctx.send(content=f"Please enter price for sale!")
-                # return
             else:
                 price_str = f"₳{price:,.0f}"
 
@@ -1705,8 +1698,9 @@ async def fetch_data():
     
             new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
-            await asyncio.sleep(2)
-            await post_sales(new_sales)
+            if bot.guild.name == "unsigned_algorithms":
+                await asyncio.sleep(2)
+                await post_sales(new_sales)
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:

@@ -351,6 +351,10 @@ def check_structural_similarity(layers1, layers2):
         rotated = rotate_layers(layers1, rotation)
         if check(rotated, layers2):
             return True
+
+        rotated_mirrored = mirror_layers(rotated, "vertical")    
+        if check(rotated_mirrored, layers2):
+            return True     
     
     directions = ["horizontal", "vertical"]
 
