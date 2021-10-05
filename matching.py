@@ -331,19 +331,10 @@ def check_structural_similarity(layers1, layers2):
         formatted1 = format_subpattern(subpattern1)
         formatted2 = format_subpattern(subpattern2)
 
-        still_to_compare = formatted2[:]
-        for subpattern in formatted1:
-            if subpattern in formatted2:
-                try:
-                    still_to_compare.remove(subpattern)
-                except:
-                    return False
-                else:
-                    continue
-        else:
-            if len(still_to_compare) > 0:
-                return False
+        if set(formatted1) == set(formatted2):
             return True
+        else:
+            return False
 
     rotations = [0, 90, 180, 270]
 
