@@ -171,7 +171,7 @@ def get_direction_from_rotation(rotation):
         270: "horizontal",
     }
     return rotations.get(rotation)
-    
+
 def get_side_value(layer: tuple, side: str):
     try:
         dist = layer[3]
@@ -383,7 +383,7 @@ def format_subpattern(subpattern):
     formatted = list()
 
     for _, color_layers in subpattern.items():
-        formatted.append(sorted(color_layers))
+        formatted.append(tuple(sorted(color_layers)))
 
     return formatted
 
