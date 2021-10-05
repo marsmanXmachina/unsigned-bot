@@ -32,6 +32,9 @@ from fetch import fetch_data_from_marketplace
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
+from deconstruct import get_prop_layers, get_subpattern, get_subpattern_names
+
+
 from dotenv import load_dotenv
 load_dotenv() 
 
@@ -1310,6 +1313,10 @@ async def show(ctx: SlashContext, numbers: str, columns: str = None):
             return
         else:
             numbers_cleaned.append(number)
+
+    LIMIT_DISPLAY = 20
+    if len(numbers_cleaned) > LIMIT_DISPLAY:
+        numbers_cleaned = numbers_cleaned[:LIMIT_DISPLAY]
     
     if not columns:
         columns = math.ceil(math.sqrt(len(numbers_cleaned)))
@@ -1381,11 +1388,37 @@ async def subs(ctx: SlashContext, number: str):
 
         number = str(int(number))
 
+        unsig_data = get_unsigs_data(number)
+
+        layers = get_prop_layers(unsig_data)
+        subpattern = get_subpattern(layers)
+        subpattern_names = get_subpattern_names(subpattern)
+
         title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
         description="Explore the subpattern of your unsig..."
         color=discord.Colour.dark_blue()
 
         embed = discord.Embed(title=title, description=description, color=color)
+
+        
+        
+        if len(layers) > 1:
+            name_idx = 1
+            names_str = f"{name_idx}. #{number.zfill(5)}\n"
+        else:
+            names_str = ""
+            name_idx = 0
+
+        COLORS = ["Red", "Green", "Blue"]
+        for color in reversed(COLORS):
+            name = subpattern_names.get(color, None)
+            if not name:
+                continue
+
+            name_idx += 1
+            names_str += f"{name_idx}. `{color.lower()} {name}`\n"
+
+        embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top to Bottom {EMOJI_ARROW_DOWN}", value=names_str, inline=False)
 
         try:
             image_path = f"img/subpattern_{number}.png"

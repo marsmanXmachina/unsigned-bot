@@ -163,6 +163,15 @@ def get_opposite_side(side:str) -> str:
 def get_rotations_from_direction(direction: str) -> list:
     return [0, 180] if direction == "vertical" else [90, 270]
 
+def get_direction_from_rotation(rotation):
+    rotations = {
+        0: "vertical",
+        90: "horizontal",
+        180: "vertical",
+        270: "horizontal",
+    }
+    return rotations.get(rotation)
+    
 def get_side_value(layer: tuple, side: str):
     try:
         dist = layer[3]
@@ -328,11 +337,14 @@ def check_structural_similarity(layers1, layers2):
         subpattern1 = get_subpattern(layers1)
         subpattern2 = get_subpattern(layers2)
 
-        formatted1 = format_subpattern(subpattern1)
+        # formatted1 = format_subpattern(subpattern1)
         formatted2 = format_subpattern(subpattern2)
 
-        if set(formatted1) == set(formatted2):
-            return True
+        subpattern_mutations = get_subpattern_mutations(subpattern1)
+
+        for mutation in subpattern_mutations:
+            if set(mutation) == set(formatted2):
+                return True
         else:
             return False
 
@@ -374,3 +386,56 @@ def format_subpattern(subpattern):
         formatted.append(sorted(color_layers))
 
     return formatted
+
+def get_subpattern_mutations(subpattern):
+
+    flattened = format_subpattern(subpattern)
+    mutations = [flattened]
+    
+    rotation = 180
+    
+    for i,layers in enumerate(flattened):
+        copied_layers = flattened[:]
+
+        rotated = rotate_layers(layers, rotation)
+        copied_layers[i] = rotated
+        formatted = [tuple(sorted(layers)) for layers in copied_layers]
+        mutations.append(formatted)
+
+    return mutations
+
+def get_subpattern_names(subpattern):
+
+    NAMES_SINGLE = {
+        (2,"vertical"): "post",
+        (2,"horizontal"): "beam",
+        (4,"vertical"): "triple post",
+        (4,"horizontal"): "triple beam",
+    }
+
+    NAMES_DOUBLE = {
+        (1,1): "diagonal",
+        (1,2): "hourglass",
+        (1,4): "rivers",
+        (2,4): "veins",
+        (2,2): "bulb",
+        (4,4): "triple bulb"
+    }
+
+    names = dict()
+
+    for color, layers in subpattern.items():
+        if len(layers) == 1:
+            layer = layers[0]
+            _, mult, rot, dist = layer
+            direction = get_direction_from_rotation(rot)
+            name = NAMES_SINGLE.get((mult, direction), "no-liner")
+        else:
+            props = list(zip(*layers))
+            mults =  props[1]
+
+            name = NAMES_DOUBLE.get(mults)
+
+        names[color] = name
+    
+    return names
