@@ -9,7 +9,7 @@ from datetime import datetime
 import asyncio
 
 from operator import itemgetter
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from files_util import load_json, save_json
 
@@ -101,6 +101,7 @@ EMOJI_GLASS = "\U0001F50E"
 EMOJI_MIRROW = "\U0001FA9E"
 EMOJI_DNA = "\U0001F9EC"
 EMOJI_WHALE = "\U0001F40B"
+EMOJI_LINK = "\U0001F517"
 
 ARROWS = {
     "top": EMOJI_ARROW_UP,
@@ -353,7 +354,17 @@ def link_asset_to_marketplace(number: str, marketplace_id: str):
     url = get_url_from_marketplace_id(marketplace_id)
     return f" [#{str(number).zfill(5)}]({url}) "
 
+def link_assets_to_gallery(numbers, cols):
+    assets_str = ""
 
+    for i, number in enumerate(numbers):
+        link = get_unsig_url(str(number))
+        assets_str += f" [#{str(number).zfill(5)}]({link}) "
+
+        if (i+1) % cols == 0:
+            assets_str += f"\n"
+
+    return assets_str
 
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
@@ -484,7 +495,7 @@ def embed_marketplaces():
 
 def embed_whales():
     title = f"{EMOJI_WHALE} About 'whales' {EMOJI_WHALE}"
-    description="They're not an alien species..."
+    description="They're NOT an alien species..."
     color=discord.Colour.blue()
 
     TWEETS = {
@@ -748,8 +759,27 @@ def embed_siblings(number, siblings, selected, offers, cols=2):
 
     return embed
 
-def embed_pattern_count(pattern: list, to_display: list, cols=3):
-    pass
+def embed_pattern_combo(pattern_found: list, search_input: list, to_display: list, cols=3):
+    num_found = len(pattern_found)
+
+    subs_frequencies = load_json("json/subs_frequencies.json")
+
+    title = f"{EMOJI_LINK} Pattern combo {EMOJI_LINK}"
+    description=f"**{num_found}** unsigs including this pattern combo..."
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    search_formatted = dict(Counter(search_input))
+    for sub, amount in search_formatted.items():
+        frequency = subs_frequencies.get(sub).get(str(amount), 0)
+        embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / 31119** unsigs contain this pattern", inline=False)
+
+    if to_display:
+        unsigs_str=link_assets_to_gallery(to_display, cols)
+        embed.add_field(name=f"{EMOJI_ARROW_DOWN} Random selection {EMOJI_ARROW_DOWN}", value=unsigs_str, inline=False)
+
+    return embed
 
 # @slash.slash(
 #     name="fund", 
@@ -1396,50 +1426,77 @@ async def show(ctx: SlashContext, numbers: str, columns: str = None):
 
     
 
-# @slash.slash(
-#     name="find-pattern", 
-#     description="count unsigs with given pattern combo", 
-#     guild_ids=GUILD_IDS,
-#     options=[
-#         create_option(
-#             name="first_pattern",
-#             description="1st subpattern",
-#             required=True,
-#             option_type=3,
-#             choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
-#         ),
-#         create_option(
-#             name="second_pattern",
-#             description="2nd subpattern",
-#             required=False,
-#             option_type=3,
-#             choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
-#         ),
-#         create_option(
-#             name="third_pattern",
-#             description="3rd subpattern",
-#             required=False,
-#             option_type=3,
-#             choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
-#         ),
-#     ]
-# )
-# async def find_pattern(ctx: SlashContext, first_pattern: str, second_pattern: str = None, third_pattern: str = None):
+@slash.slash(
+    name="pattern-combo", 
+    description="count unsigs with given pattern combo", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="first_pattern",
+            description="1st subpattern",
+            required=True,
+            option_type=3,
+            choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+        ),
+        create_option(
+            name="second_pattern",
+            description="2nd subpattern",
+            required=False,
+            option_type=3,
+            choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+        ),
+        create_option(
+            name="third_pattern",
+            description="3rd subpattern",
+            required=False,
+            option_type=3,
+            choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+        ),
+    ]
+)
+async def pattern_combo(ctx: SlashContext, first_pattern: str, second_pattern: str = None, third_pattern: str = None):
         
-#     if ctx.channel.name == "general":
-#         await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
-#         return
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
 
-#     pattern = [first_pattern, second_pattern, third_pattern]
+    pattern = [first_pattern, second_pattern, third_pattern]
 
-#     pattern_for_search = [p for p in pattern if p in SUBPATTERN_NAMES]
+    pattern_for_search = [p for p in pattern if p in SUBPATTERN_NAMES]
 
-#     subs_counted = load_json("json/subs_counted.json")
+    subs_counted = load_json("json/subs_counted.json")
 
-#     pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
+    pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
 
-#     await ctx.send(content=f"**{len(pattern_found)}** unsigs found with this pattern combo")
+    LIMIT_DISPLAY = 9
 
+    if len(pattern_found) <= LIMIT_DISPLAY:
+        to_display = pattern_found
+        cols = math.ceil(math.sqrt(len(to_display)))
+    else:
+        to_display = random.sample(pattern_found, LIMIT_DISPLAY)
+        cols = math.ceil(math.sqrt(LIMIT_DISPLAY))
+
+
+    embed = embed_pattern_combo(pattern_found, pattern_for_search, to_display, cols)
+
+    if to_display:
+        try:
+            image_path = f"img/grid_{''.join(to_display)}.png"
+            
+            await gen_grid(to_display, cols)
+
+            image_file = discord.File(image_path, filename="grid.png")
+            if image_file:
+                embed.set_image(url="attachment://grid.png")
+            delete_image_files(IMAGE_PATH)
+        except:
+            await ctx.send(content=f"I can't display the selection of unsigs.")
+            return
+        else:
+            await ctx.send(file=image_file, embed=embed)
+    else:
+        await ctx.send(embed=embed)
 
 
 @slash.slash(
