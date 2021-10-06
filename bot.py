@@ -469,6 +469,35 @@ def add_data_source(embed, last_update):
 def add_policy(embed):
     embed.add_field(name = f"\u26A0 Watch out for fake items and always check the policy id \u26A0", value=f"`{POLICY_ID}`", inline=False)
 
+def add_subpattern(embed, unsig_data):
+    
+    layers = get_prop_layers(unsig_data)
+    subpattern = get_subpattern(layers)
+    subpattern_names = get_subpattern_names(subpattern)
+
+    COLORS = ["Red", "Green", "Blue"]
+    subpattern_str = ""
+
+    for color in reversed(COLORS):
+        name = subpattern_names.get(color, None)
+        if name:
+            subpattern_str += f" - {color.lower()} {name}\n"
+
+    subs_counted = load_json("json/subs_counted.json")
+    pattern_for_search = list(subpattern_names.values())
+
+    pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
+    num_pattern = len(pattern_found)
+
+    if layers:
+        frequency_str = f"=> **{num_pattern} / 31119** unsigs with this pattern combo"
+    else:
+        frequency_str = ""
+
+    embed.add_field(name = f"{EMOJI_DNA} Subpattern {EMOJI_DNA}", value=f"`{subpattern_str}`\n{frequency_str}", inline=False)
+
+    
+
 def embed_marketplaces():
     title = f"{EMOJI_SHOPPINGBAGS} Where to buy? {EMOJI_SHOPPINGBAGS}"
     description="Places to buy your first unsig..."
@@ -764,14 +793,17 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
     num_found = len(pattern_found)
 
     subs_frequencies = load_json("json/subs_frequencies.json")
-
+    search_formatted = dict(Counter(search_input))
+   
+    pattern_str = " + \n".join([f"{amount} x {pattern}" for pattern, amount in search_formatted.items()])
+  
     title = f"{EMOJI_LINK} Pattern combo {EMOJI_LINK}"
-    description=f"**{num_found}** unsigs with this pattern combo..."
+    description=f"**{num_found}** unsigs with this pattern combo:\n`{pattern_str}`"
     color=discord.Colour.dark_blue()
 
     embed = discord.Embed(title=title, description=description, color=color)
 
-    search_formatted = dict(Counter(search_input))
+    
     for sub, amount in search_formatted.items():
         frequency = subs_frequencies.get(sub).get(str(amount), 0)
         embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / 31119** unsigs contain this subpattern", inline=False)
@@ -1314,6 +1346,8 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
 
         embed_props(embed, unsigs_data)
 
+        add_subpattern(embed, unsigs_data)
+
         num_props = unsigs_data.get("num_props")
         if animation and num_props > 1:
             try:
@@ -1334,8 +1368,7 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
                 return 
 
         image_url = await get_ipfs_url_from_file(asset_name)
-        print(image_url)
-        
+
         if image_url:
             try:
                 embed.set_image(url=image_url)
