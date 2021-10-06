@@ -169,6 +169,7 @@ async def get_ipfs_url(asset_id, asset_name):
 
 async def get_ipfs_url_from_file(asset_name):
     ipfs_urls = load_json("json/ipfs_urls.json")
+
     return ipfs_urls.get(asset_name, None)
     
 async def get_metadata(asset_id):
@@ -765,7 +766,7 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
     subs_frequencies = load_json("json/subs_frequencies.json")
 
     title = f"{EMOJI_LINK} Pattern combo {EMOJI_LINK}"
-    description=f"**{num_found}** unsigs including this pattern combo..."
+    description=f"**{num_found}** unsigs with this pattern combo..."
     color=discord.Colour.dark_blue()
 
     embed = discord.Embed(title=title, description=description, color=color)
@@ -773,7 +774,7 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
     search_formatted = dict(Counter(search_input))
     for sub, amount in search_formatted.items():
         frequency = subs_frequencies.get(sub).get(str(amount), 0)
-        embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / 31119** unsigs contain this pattern", inline=False)
+        embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / 31119** unsigs contain this subpattern", inline=False)
 
     if to_display:
         unsigs_str=link_assets_to_gallery(to_display, cols)
@@ -890,6 +891,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/matches + `integer`", value="show available matches on marketplace", inline=False)
     embed.add_field(name="/siblings + `integer`", value="show sbilings of your unsig", inline=False)
     embed.add_field(name="/like + `integer`", value="show related unsigs sold", inline=False)
+    embed.add_field(name="/pattern-combo", value="count unsigs with given pattern combo", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -1234,6 +1236,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
         embed_num_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url_from_file(asset_name)
+        print(image_url)
         if image_url:
             embed.set_image(url=image_url)
 
@@ -1331,8 +1334,13 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
                 return 
 
         image_url = await get_ipfs_url_from_file(asset_name)
+        print(image_url)
+        
         if image_url:
-            embed.set_image(url=image_url)
+            try:
+                embed.set_image(url=image_url)
+            except:
+                pass
 
         embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
 

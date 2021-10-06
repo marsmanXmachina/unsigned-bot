@@ -81,7 +81,7 @@ def filter_subs_by_names(subs_counted, subs_filters: list):
     counted = dict(Counter(subs_filters))
 
     for num, subs in subs_counted.items():
-        if counted.items() <= subs.items():
+        if counted.items() == subs.items():
             filtered.append(num)
 
     return filtered
