@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from files_util import load_json
 from geom_util import get_direction_from_rotation
@@ -71,3 +71,17 @@ def get_subpattern_names(subpattern):
         names[color] = name
     
     return names
+
+def filter_subs_by_names(subs_counted, subs_filters: list):
+    filtered = list()
+
+    if not subs_filters:
+        return filtered
+
+    counted = dict(Counter(subs_filters))
+
+    for num, subs in subs_counted.items():
+        if counted.items() <= subs.items():
+            filtered.append(num)
+
+    return filtered

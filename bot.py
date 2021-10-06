@@ -32,7 +32,7 @@ from fetch import fetch_data_from_marketplace
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
-from deconstruct import get_prop_layers, get_subpattern, get_subpattern_names
+from deconstruct import get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
 
 
 from dotenv import load_dotenv
@@ -100,6 +100,7 @@ EMOJI_PUZZLE = "\U0001F9E9"
 EMOJI_GLASS = "\U0001F50E"
 EMOJI_MIRROW = "\U0001FA9E"
 EMOJI_DNA = "\U0001F9EC"
+EMOJI_WHALE = "\U0001F40B"
 
 ARROWS = {
     "top": EMOJI_ARROW_UP,
@@ -119,6 +120,8 @@ INVERVALS_IN_DAYS = {
     "week": 7,
     "month": 30,
 }
+
+SUBPATTERN_NAMES = ["no-liner", "post", "triple post", "beam", "triple beam", "diagonal", "hourglass", "rivers", "veins", "bulb", "triple bulb"]
 
     
 def get_asset_id(asset_name) -> str:
@@ -479,6 +482,28 @@ def embed_marketplaces():
 
     return embed
 
+def embed_whales():
+    title = f"{EMOJI_WHALE} About 'whales' {EMOJI_WHALE}"
+    description="They're not an alien species..."
+    color=discord.Colour.blue()
+
+    TWEETS = {
+        "Brainpicking an early whale": "https://twitter.com/unsigned_algo/status/1445531270302212102?s=21",
+        "Skin in the game": "https://twitter.com/unsigned_algo/status/1445204554564268040?s=21",
+        "Worries about dumping": "https://twitter.com/unsigned_algo/status/1445205162981683200?s=21"
+    }
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    tweets_str = ""
+
+    for title, link in TWEETS.items():
+        tweets_str += f"=> ['{title}']({link})\n"
+
+    embed.add_field(name=f"Some interesting tweets...", value=tweets_str, inline=False)
+
+    return embed
+
 def embed_policy():
     title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
     description="The official one and only..."
@@ -723,6 +748,9 @@ def embed_siblings(number, siblings, selected, offers, cols=2):
 
     return embed
 
+def embed_pattern_count(pattern: list, to_display: list, cols=3):
+    pass
+
 # @slash.slash(
 #     name="fund", 
 #     description="message to raise funds", 
@@ -781,6 +809,10 @@ def embed_siblings(number, siblings, selected, offers, cols=2):
                 create_choice(
                     name="Policy ID",
                     value="policy_id"
+                ),
+                create_choice(
+                    name="About whales",
+                    value="whales"
                 )
             ]
         )
@@ -796,6 +828,9 @@ async def faq(ctx: SlashContext, topics: str):
 
         if topics == "policy_id":
             embed = embed_policy()
+
+        if topics == "whales":
+            embed = embed_whales()
         
         await ctx.send(embed=embed)
 
@@ -816,7 +851,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
     embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
-    embed.add_field(name="/sub + `integer`", value="show subpattern of your unsig", inline=False)
+    embed.add_field(name="/subs + `integer`", value="show subpattern of your unsig", inline=False)
     embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
@@ -1360,6 +1395,52 @@ async def show(ctx: SlashContext, numbers: str, columns: str = None):
         await ctx.send(file=image_file, embed=embed)
 
     
+
+# @slash.slash(
+#     name="find-pattern", 
+#     description="count unsigs with given pattern combo", 
+#     guild_ids=GUILD_IDS,
+#     options=[
+#         create_option(
+#             name="first_pattern",
+#             description="1st subpattern",
+#             required=True,
+#             option_type=3,
+#             choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+#         ),
+#         create_option(
+#             name="second_pattern",
+#             description="2nd subpattern",
+#             required=False,
+#             option_type=3,
+#             choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+#         ),
+#         create_option(
+#             name="third_pattern",
+#             description="3rd subpattern",
+#             required=False,
+#             option_type=3,
+#             choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+#         ),
+#     ]
+# )
+# async def find_pattern(ctx: SlashContext, first_pattern: str, second_pattern: str = None, third_pattern: str = None):
+        
+#     if ctx.channel.name == "general":
+#         await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+#         return
+
+#     pattern = [first_pattern, second_pattern, third_pattern]
+
+#     pattern_for_search = [p for p in pattern if p in SUBPATTERN_NAMES]
+
+#     subs_counted = load_json("json/subs_counted.json")
+
+#     pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
+
+#     await ctx.send(content=f"**{len(pattern_found)}** unsigs found with this pattern combo")
+
+
 
 @slash.slash(
     name="subs", 
