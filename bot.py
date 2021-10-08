@@ -28,7 +28,9 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_animation, gen_grid_with_matches, delete_image_files
 
-from fetch import fetch_data_from_marketplace
+from fetch import fetch_data_from_marketplace, update_certificates, get_new_certificates
+
+from parsing import get_certificate_data_by_number
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
@@ -43,8 +45,14 @@ INVERVAL_LOOP=900
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
 
+BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
+BLOCKFROST_API_HEADERS = {
+    "project_id": BLOCKFROST_API_TOKEN
+}
+
 TOKEN = os.getenv('BOT_TOKEN')
 POLICY_ID = os.getenv('POLICY_ID')
+ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
 SALES_CHANNEL=os.getenv('SALES_CHANNEL')
 SALES_CHANNEL_ID = int(os.getenv('SALES_CHANNEL_ID'))
 GUILD_NAME = os.getenv('GUILD_NAME')
@@ -72,6 +80,8 @@ DISCORD_ESCROWS = {
     "CardanoNFT": "https://discord.gg/mWDTRdDMVk",
     "The Hoskinsons": "https://discord.gg/UvFyfsMgfP"
 }
+
+DISCORD_CNFT_ART = "https://discord.gg/AgMWTWDwaS"
 
 MAX_AMOUNT = 31118
 
@@ -102,6 +112,11 @@ EMOJI_MIRROW = "\U0001FA9E"
 EMOJI_DNA = "\U0001F9EC"
 EMOJI_WHALE = "\U0001F40B"
 EMOJI_LINK = "\U0001F517"
+EMOJI_CERT = "\U0001F4DC"
+EMOJI_DIAMOND = "\U0001F48E"
+EMOJI_PICK = "\u26CF"
+EMOJI_CHECK = "\u2705"
+EMOJI_CROSS = "\u274C"
 
 ARROWS = {
     "top": EMOJI_ARROW_UP,
@@ -372,6 +387,7 @@ bot.sales = load_json("json/sales.json")
 bot.sales_updated = None
 bot.offers = None
 bot.offers_updated = None
+bot.certs_updated = None
 
 slash = SlashCommand(bot, sync_commands=True)
 
@@ -469,6 +485,10 @@ def add_data_source(embed, last_update):
 def add_policy(embed):
     embed.add_field(name = f"\u26A0 Watch out for fake items and always check the policy id \u26A0", value=f"`{POLICY_ID}`", inline=False)
 
+def add_last_update(embed, last_update):
+    last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
+    embed.set_footer(text=f"\nLast update: {last_update}")
+
 def add_subpattern(embed, unsig_data):
     
     layers = get_prop_layers(unsig_data)
@@ -483,19 +503,25 @@ def add_subpattern(embed, unsig_data):
         if name:
             subpattern_str += f" - {color.lower()} {name}\n"
 
+    embed.add_field(name = f"{EMOJI_DNA} Subpattern {EMOJI_DNA}", value=f"`{subpattern_str}`", inline=False)
+
+
     subs_counted = load_json("json/subs_counted.json")
     pattern_for_search = list(subpattern_names.values())
 
     pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
     num_pattern = len(pattern_found)
 
+    pattern_formatted = dict(Counter(pattern_for_search))
+
+    pattern_combo_str = " + \n".join([f" {amount} x {pattern}" for pattern, amount in pattern_formatted.items()])
+
     if layers:
-        frequency_str = f"=> **{num_pattern} / 31119** unsigs with this pattern combo"
+        frequency_str = f"\n=> **{num_pattern} / 31119** unsigs with this pattern combo"
     else:
         frequency_str = ""
 
-    embed.add_field(name = f"{EMOJI_DNA} Subpattern {EMOJI_DNA}", value=f"`{subpattern_str}`\n{frequency_str}", inline=False)
-
+    embed.add_field(name = f"{EMOJI_LINK} Pattern combo {EMOJI_LINK}", value=f"`{pattern_combo_str}`\n{frequency_str}", inline=False)
     
 
 def embed_marketplaces():
@@ -814,6 +840,48 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
 
     return embed
 
+def embed_certificate(number, data: dict, num_certificates: int):
+
+    if data:
+        metadata = data.get("onchain_metadata")
+        policy_id = data.get("policy_id")
+        certificate_number = metadata.get("Certificate number")
+        certificate_number = certificate_number.replace("#", "")
+
+        certificate_link = f"{POOL_PM_URL}/{policy_id}.{certificate_number}x{number.zfill(5)}"
+
+        ipfs_hash = metadata.get("image").rsplit("/",1)[-1]
+        image_link = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
+
+        title = f"{EMOJI_CERT} Cert for unsig{number.zfill(5)} {EMOJI_CERT}"
+        description=f"**{num_certificates}** certificates already minted\n"
+        color=discord.Colour.dark_blue()
+    
+        embed = discord.Embed(title=title, description=description, color=color, url=certificate_link)
+    else:
+        title = f"{EMOJI_CROSS} No cert found for unsig{number.zfill(5)} {EMOJI_CROSS}"
+        description=f"**{num_certificates}** certificates already minted\n"
+        color=discord.Colour.dark_blue()
+        embed = discord.Embed(title=title, description=description, color=color)
+    
+    if data:
+        mint_date = metadata.get("Unsig mint date")
+        embed.add_field(name=f"{EMOJI_PICK} Minted on", value=f"`{mint_date}`", inline=True)
+
+        assessment_date = metadata.get("Assessment date")
+        embed.add_field(name=f"{EMOJI_CHECK} Certified on", value=f"`{assessment_date}`", inline=True)
+
+        #TODO: Add more certificate information
+
+        embed.set_image(url=image_link)
+
+    embed.add_field(name=f"{EMOJI_CART} Order your unsig certificate {EMOJI_CART}", value=f"{EMOJI_ARROW_RIGHT} visit [CNFT_ART's discord]({DISCORD_CNFT_ART})", inline=False)
+
+    add_last_update(embed, bot.certs_updated)
+
+    return embed
+    
+
 # @slash.slash(
 #     name="fund", 
 #     description="message to raise funds", 
@@ -921,9 +989,10 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
     embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
     embed.add_field(name="/matches + `integer`", value="show available matches on marketplace", inline=False)
-    embed.add_field(name="/siblings + `integer`", value="show sbilings of your unsig", inline=False)
+    embed.add_field(name="/siblings + `integer`", value="show siblings of your unsig", inline=False)
     embed.add_field(name="/like + `integer`", value="show related unsigs sold", inline=False)
     embed.add_field(name="/pattern-combo", value="count unsigs with given pattern combo", inline=False)
+    embed.add_field(name="/cert + `integer`", value="show cert of unsig with given number", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -1277,6 +1346,48 @@ async def sell(ctx: SlashContext, number: str, price: str):
         await ctx.send(embed=embed)
 
 @slash.slash(
+    name="cert", 
+    description="show certificate data of your unsig", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="Number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def cert(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+    else:
+        number = str(int(number))
+
+        certificates = load_json("json/certificates.json")
+        num_certificates = len(certificates)
+
+        data = get_certificate_data_by_number(number, certificates)
+
+        embed = embed_certificate(number, data, num_certificates)
+        await ctx.send(embed=embed)
+        return
+        try:
+            pass
+        except:
+            await ctx.send(content=f"I can't embed certificate for your unsig.")
+        else:
+            await ctx.send(embed=embed)
+
+
+@slash.slash(
     name="unsig", 
     description="show unsig with given number", 
     guild_ids=GUILD_IDS,
@@ -1317,7 +1428,7 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
-        asset_id = get_asset_id(asset_name)
+        # asset_id = get_asset_id(asset_name)
 
         number = str(int(number))
 
@@ -1918,6 +2029,19 @@ async def fetch_data():
     if offers_data:
         bot.offers = offers_data
         bot.offers_updated = datetime.utcnow()
+
+    try:
+        certificates = load_json("json/certificates.json")
+        new_certificates = get_new_certificates(certificates)
+        print(len(new_certificates), "new certificates found")
+        
+        if new_certificates:
+            update_certificates(certificates, new_certificates)
+            
+        bot.certs_updated = datetime.utcnow()
+    except:
+        print("Update certificates failed")
+   
  
     print("Updated:", datetime.now()) 
 

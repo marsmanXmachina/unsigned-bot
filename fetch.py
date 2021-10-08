@@ -1,4 +1,7 @@
+import os
 
+
+import os
 import copy
 
 import asyncio
@@ -6,7 +9,20 @@ import asyncio
 import requests
 import aiohttp
 
-from files_util import load_json
+from files_util import load_json, save_json
+
+from dotenv import load_dotenv
+load_dotenv() 
+
+BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
+BLOCKFROST_API_HEADERS = {
+    "project_id": BLOCKFROST_API_TOKEN
+}
+
+BLOCKFROST_API_URL = "https://cardano-mainnet.blockfrost.io/api/v0"
+
+ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
+
 
 
 def post_request(url, payload):
@@ -151,3 +167,49 @@ def add_num_props(assets: list) -> list:
         asset["num_props"] = unsigs_data.get("num_props")
     
     return assets
+
+def call_api(url, headers=None, params=None):
+    try:
+        response = requests.get(url, headers=headers, params=params).json()
+    except:
+        return
+    else:
+        return response
+
+def get_asset_ids(policy_id: str) -> list:
+    url = f"{BLOCKFROST_API_URL}/assets/policy/{policy_id}"
+
+    params = {
+        "page": 1,
+        "order": "desc"
+    }
+
+    response = call_api(url, headers=BLOCKFROST_API_HEADERS, params=params)
+    if response:
+       return [asset.get("asset") for asset in response]
+
+def get_asset_data(asset_id):
+    url = f"{BLOCKFROST_API_URL}/assets/{asset_id}"
+
+    response = call_api(url, headers=BLOCKFROST_API_HEADERS)
+    if response:
+        return response
+
+def update_certificates(certificates: dict, new_certs: dict):
+    if new_certs:
+        certificates.update(new_certs)
+        save_json("json/certificates.json", certificates)
+
+def get_new_certificates(certificates: dict) -> dict:
+    asset_ids = get_asset_ids(ASSESSMENTS_POLICY_ID)
+
+    new_certs_ids = set(asset_ids).difference(set(certificates.keys()))
+
+    new_certs = dict()
+    for cert_id in list(new_certs_ids):
+        cert_data = get_asset_data(cert_id)
+        new_certs[cert_id] = cert_data
+
+    return new_certs
+
+
