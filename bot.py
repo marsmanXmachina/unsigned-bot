@@ -840,21 +840,26 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
 
     return embed
 
-def embed_certificate(number, data: dict, num_certificates: int):
+def embed_certificate(number, data: dict, num_certificates: int, feed=False):
 
     if data:
         metadata = data.get("onchain_metadata")
         policy_id = data.get("policy_id")
-        certificate_number = metadata.get("Certificate number")
-        certificate_number = certificate_number.replace("#", "")
+        certificate_name = metadata.get("name")
 
-        certificate_link = f"{POOL_PM_URL}/{policy_id}.{certificate_number}x{number.zfill(5)}"
+        certificate_number = get_idx_from_asset_name(certificate_name)
+        
+        certificate_link = f"{POOL_PM_URL}/{policy_id}.UNS{str(certificate_number).zfill(5)}x{number.zfill(5)}"
 
         ipfs_hash = metadata.get("image").rsplit("/",1)[-1]
         image_link = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
+        print(image_link)
 
         title = f"{EMOJI_CERT} Cert for unsig{number.zfill(5)} {EMOJI_CERT}"
-        description=f"**{num_certificates}** certificates already minted\n"
+        if feed:
+            description=f"minted by CNFT_ART\n"
+        else:
+            description=f"**{num_certificates}** certificates already minted\n"
         color=discord.Colour.dark_blue()
     
         embed = discord.Embed(title=title, description=description, color=color, url=certificate_link)
@@ -877,7 +882,8 @@ def embed_certificate(number, data: dict, num_certificates: int):
 
     embed.add_field(name=f"{EMOJI_CART} Order your unsig certificate {EMOJI_CART}", value=f"{EMOJI_ARROW_RIGHT} visit [CNFT_ART's discord]({DISCORD_CNFT_ART})", inline=False)
 
-    add_last_update(embed, bot.certs_updated)
+    if not feed:
+        add_last_update(embed, bot.certs_updated)
 
     return embed
     
@@ -1376,11 +1382,8 @@ async def cert(ctx: SlashContext, number: str):
 
         data = get_certificate_data_by_number(number, certificates)
 
-        embed = embed_certificate(number, data, num_certificates)
-        await ctx.send(embed=embed)
-        return
         try:
-            pass
+            embed = embed_certificate(number, data, num_certificates)
         except:
             await ctx.send(content=f"I can't embed certificate for your unsig.")
         else:
@@ -1983,6 +1986,23 @@ async def post_sales(sales):
             message = await channel.send(embed=embed)
             await message.publish()
 
+async def post_certs(new_certs, num_certificates):
+    try:
+        channel = bot.get_channel(SALES_CHANNEL_ID)
+    except:
+        print(f"Can't find the sales feed channel")
+    else:
+        for cert_id, cert_data in new_certs.items():
+            metadata = cert_data.get("onchain_metadata")
+            asset_name = metadata.get("Unsig number")
+            unsig_number = asset_name.replace("#", "")
+
+            embed = embed_certificate(str(int(unsig_number)), cert_data, num_certificates, feed=True)
+            message = await channel.send(embed=embed)
+            try:
+                await message.publish()
+            except:
+                print("Can not publish cert!")
 
 async def get_last_messages(channel):
     last_messages = list()
@@ -2032,17 +2052,22 @@ async def fetch_data():
 
     try:
         certificates = load_json("json/certificates.json")
+        num_certificates = len(certificates.keys())
         new_certificates = get_new_certificates(certificates)
         print(len(new_certificates), "new certificates found")
         
         if new_certificates:
             update_certificates(certificates, new_certificates)
+
+            if bot.guild.name == "unsigned_algorithms":
+                await asyncio.sleep(2)
+                await post_certs(new_certificates, num_certificates)
             
         bot.certs_updated = datetime.utcnow()
     except:
-        print("Update certificates failed")
-   
- 
+        print("Update certificates failed!")
+
+
     print("Updated:", datetime.now()) 
 
 
