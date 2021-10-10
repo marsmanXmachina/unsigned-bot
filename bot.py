@@ -4,18 +4,15 @@ import random
 import re
 import json
 import time
-import pytz
 from datetime import datetime
+
 import asyncio
 
 from operator import itemgetter
 from collections import defaultdict, Counter
 
-from files_util import load_json, save_json
+from utility.files_util import load_json, save_json
 
-import aiohttp
-
-import requests
 from requests_html import HTMLSession, AsyncHTMLSession
 
 import discord
@@ -25,6 +22,7 @@ from discord.ext.tasks import loop
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
+
 
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_animation, gen_grid_with_matches, delete_image_files
 
@@ -36,6 +34,7 @@ from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
 from deconstruct import get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
 
+from emojis import *
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -60,6 +59,7 @@ GUILD_ID = os.getenv('GUILD_ID')
 
 GUILD_IDS=[int(GUILD_ID)]
 
+
 DISCORD_API_URL = "https://discord/api/v9"
 
 CARDANOSCAN_URL = "https://cardanoscan.io"
@@ -69,6 +69,7 @@ CNFT_URL = "https://cnft.io"
 CNFT_API_URL = "https://api.cnft.io/market/listings"
 
 UNSIGS_URL = "https://www.unsigs.com"
+
 
 MARKETPLACES = {
     "CNFT.IO": "https://cnft.io/marketplace.php?s=0e14267a8020229adc0184dd25fa3174c3f7d6caadcb4425c70e7c04",
@@ -85,45 +86,6 @@ DISCORD_CNFT_ART = "https://discord.gg/AgMWTWDwaS"
 
 MAX_AMOUNT = 31118
 
-EMOJI_FRAME="\U0001F5BC"
-EMOJI_RAINBOW = "\U0001F308"
-EMOJI_BARCHART = "\U0001F4CA"
-EMOJI_CIRCLE_ARROWS = "\U0001F504"
-EMOJI_GEAR = "\u2699"
-EMOJI_CART = "\U0001F6D2"
-EMOJI_MONEYBACK = "\U0001F4B0"
-EMOJI_CALENDAR = "\U0001F4C5"
-EMOJI_SHOPPINGBAGS = "\U0001F6CD"
-EMOJI_PERSON = "\U0001F464"
-EMOJI_NUMBERS = "\U0001F522"
-EMOJI_PALETTE = "\U0001F3A8"
-EMOJI_ARROW_DOWN = "\u2B07"
-EMOJI_ARROW_RIGHT = "\u27A1"
-EMOJI_ARROW_LEFT = "\u2B05"
-EMOJI_ARROW_UP = "\u2B06"
-EMOJI_PARTY = "\U0001F389"
-EMOJI_WARNING = "\u26A0"
-EMOJI_ROBOT = "\U0001F916"
-EMOJI_BROOM = "\U0001F9F9"
-EMOJI_MONEYWINGS = "\U0001F4B8"
-EMOJI_PUZZLE = "\U0001F9E9"
-EMOJI_GLASS = "\U0001F50E"
-EMOJI_MIRROW = "\U0001FA9E"
-EMOJI_DNA = "\U0001F9EC"
-EMOJI_WHALE = "\U0001F40B"
-EMOJI_LINK = "\U0001F517"
-EMOJI_CERT = "\U0001F4DC"
-EMOJI_DIAMOND = "\U0001F48E"
-EMOJI_PICK = "\u26CF"
-EMOJI_CHECK = "\u2705"
-EMOJI_CROSS = "\u274C"
-
-ARROWS = {
-    "top": EMOJI_ARROW_UP,
-    "left": EMOJI_ARROW_LEFT,
-    "right": EMOJI_ARROW_RIGHT,
-    "bottom": EMOJI_ARROW_DOWN
-}
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -140,11 +102,11 @@ INVERVALS_IN_DAYS = {
 SUBPATTERN_NAMES = ["no-liner", "post", "triple post", "beam", "triple beam", "diagonal", "hourglass", "rivers", "veins", "bulb", "triple bulb"]
 
     
-def get_asset_id(asset_name) -> str:
+def get_asset_id(asset_name: str) -> str:
     asset_ids = load_json("json/asset_ids.json")
     return asset_ids.get(asset_name, None)
 
-def get_asset_name_from_idx(idx: str):
+def get_asset_name_from_idx(idx: str) -> str:
     try:
         index = int(idx)
     except:
@@ -387,6 +349,7 @@ bot.sales = load_json("json/sales.json")
 bot.sales_updated = None
 bot.offers = None
 bot.offers_updated = None
+bot.certs = load_json("json/certificates.json")
 bot.certs_updated = None
 
 slash = SlashCommand(bot, sync_commands=True)
@@ -483,7 +446,7 @@ def add_data_source(embed, last_update):
     embed.set_footer(text=f"Data comes from https://cnft.io\nLast update: {last_update}")
 
 def add_policy(embed):
-    embed.add_field(name = f"\u26A0 Watch out for fake items and always check the policy id \u26A0", value=f"`{POLICY_ID}`", inline=False)
+    embed.add_field(name = f"{EMOJI_WARNING} Watch out for fake items and always check the policy id {EMOJI_WARNING}", value=f"`{POLICY_ID}`", inline=False)
 
 def add_last_update(embed, last_update):
     last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -542,6 +505,10 @@ def embed_marketplaces():
     for escrow, escrow_url in DISCORD_ESCROWS.items():
         escrow_str = f"{EMOJI_ARROW_RIGHT} [{escrow}]({escrow_url})\n"
         escrows_str += escrow_str
+
+    escrow_rules_str = "`=> Don't trust, verify!\n=> Minimize steps where trust is needed.\n=> Minimize potential loss in worst case scenario.`"
+    
+    embed.add_field(name=f"{EMOJI_WARNING} Be careful when using escrow {EMOJI_WARNING}", value=escrow_rules_str, inline=False)
 
     embed.add_field(name=f"Escrows on discord server", value=escrows_str, inline=False)
 
@@ -1310,7 +1277,6 @@ async def sell(ctx: SlashContext, number: str, price: str):
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
-        asset_id = get_asset_id(asset_name)
 
         number = str(int(number))
 
@@ -1431,7 +1397,6 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
     if not unsig_exists(number):
         await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
     else:
-        # asset_id = get_asset_id(asset_name)
 
         number = str(int(number))
 
@@ -1867,7 +1832,6 @@ async def minted(ctx: SlashContext, index: str):
     if not asset_name:
         await ctx.send(content=f"Unsig with minting order {index} does not exist!\nPlease enter number between 1 and {MAX_AMOUNT+1}.")
     else:
-        asset_id = get_asset_id(asset_name)
 
         number = str(get_idx_from_asset_name(asset_name))
         unsig_url = get_unsig_url(number)
@@ -1960,7 +1924,7 @@ async def post_sales(sales):
         for sale_data in sales:
             marketplace_name = sale_data.get("assetid")
             asset_name = marketplace_name.replace("_", "")
-            asset_id = get_asset_id(asset_name)
+
 
             price = sale_data.get("price")
             price = price/1000000
@@ -2053,11 +2017,13 @@ async def fetch_data():
     try:
         certificates = load_json("json/certificates.json")
         num_certificates = len(certificates.keys())
+
         new_certificates = get_new_certificates(certificates)
         print(len(new_certificates), "new certificates found")
         
         if new_certificates:
-            update_certificates(certificates, new_certificates)
+            bot.certs.update(new_certificates)
+            save_json("json/certificates.json", bot.certs)
 
             if bot.guild.name == "unsigned_algorithms":
                 await asyncio.sleep(2)

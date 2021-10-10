@@ -3,7 +3,7 @@ import random
 
 from collections import defaultdict
 
-from files_util import load_json
+from utility.files_util import load_json
 
 
 def choose_best_matches(number: str, matches: dict) -> dict:

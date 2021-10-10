@@ -1,7 +1,8 @@
 from collections import defaultdict, Counter
 
-from files_util import load_json
-from geom_util import get_direction_from_rotation
+from utility.files_util import load_json
+from utility.geom_util import get_direction_from_rotation
+
 
 def get_prop_layers(unsig_data: dict) -> list:
     props = unsig_data.get("properties")

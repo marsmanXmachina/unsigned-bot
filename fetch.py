@@ -9,7 +9,7 @@ import asyncio
 import requests
 import aiohttp
 
-from files_util import load_json, save_json
+from utility.files_util import load_json, save_json
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -168,7 +168,7 @@ def add_num_props(assets: list) -> list:
     
     return assets
 
-def call_api(url, headers=None, params=None):
+def get_request(url, headers=None, params=None):
     try:
         response = requests.get(url, headers=headers, params=params).json()
     except:
@@ -184,14 +184,14 @@ def get_asset_ids(policy_id: str) -> list:
         "order": "desc"
     }
 
-    response = call_api(url, headers=BLOCKFROST_API_HEADERS, params=params)
+    response = get_request(url, headers=BLOCKFROST_API_HEADERS, params=params)
     if response:
        return [asset.get("asset") for asset in response]
 
 def get_asset_data(asset_id):
     url = f"{BLOCKFROST_API_URL}/assets/{asset_id}"
 
-    response = call_api(url, headers=BLOCKFROST_API_HEADERS)
+    response = get_request(url, headers=BLOCKFROST_API_HEADERS)
     if response:
         return response
 

@@ -1,8 +1,11 @@
 import re
-from files_util import load_json
+
+from utility.files_util import load_json
 
 
-def get_certificate_data_by_number(number, certificates):
+
+
+def get_certificate_data_by_number(number, certificates: dict) -> dict:
     for _, data in certificates.items():
         metadata = data.get("onchain_metadata")
 

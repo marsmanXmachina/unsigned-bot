@@ -4,7 +4,7 @@ import asyncio
 import numpy as np
 from PIL import Image, ImageOps
 
-from files_util import load_json
+from utility.files_util import load_json
 from matching import order_by_color, get_prop_layers
 
 DIM = 512
