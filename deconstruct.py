@@ -3,6 +3,7 @@ from collections import defaultdict, Counter
 from utility.files_util import load_json
 from utility.geom_util import get_direction_from_rotation
 
+SUBPATTERN_NAMES = ["no-liner", "post", "triple post", "beam", "triple beam", "diagonal", "hourglass", "rivers", "veins", "bulb", "triple bulb"]
 
 def get_prop_layers(unsig_data: dict) -> list:
     props = unsig_data.get("properties")
@@ -24,6 +25,7 @@ def order_by_color(layers: list) -> dict:
     return ordered
 
 
+
 def get_subpattern(layers: list) -> dict:
 
     layers_by_color = order_by_color(layers)
@@ -37,7 +39,16 @@ def get_subpattern(layers: list) -> dict:
     
     return subpattern
 
-def get_subpattern_names(subpattern):
+def format_subpattern(subpattern: dict) -> list:
+    formatted = list()
+
+    for _, color_layers in subpattern.items():
+        formatted.append(tuple(sorted(color_layers)))
+
+    return formatted
+
+
+def get_subpattern_names(subpattern: dict) -> dict:
 
     NAMES_SINGLE = {
         (2,"vertical"): "post",
@@ -73,7 +84,7 @@ def get_subpattern_names(subpattern):
     
     return names
 
-def filter_subs_by_names(subs_counted, subs_filters: list):
+def filter_subs_by_names(subs_counted: dict, subs_filters: list) -> list:
     filtered = list()
 
     if not subs_filters:

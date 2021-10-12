@@ -1,9 +1,65 @@
 import re
+import time
+from operator import itemgetter
+from collections import defaultdict
 
 from utility.files_util import load_json
 
+from my_constants import MAX_AMOUNT
+from urls import UNSIGS_URL
 
+def get_asset_id(asset_name: str) -> str:
+    asset_ids = load_json("json/asset_ids.json")
+    return asset_ids.get(asset_name, None)
 
+def get_asset_name_from_idx(idx: str) -> str:
+    try:
+        index = int(idx)
+    except:
+        return f"unsig{idx}"
+    else:
+        number_str = str(index).zfill(5)
+        return f"unsig{number_str}"
+
+def get_idx_from_asset_name(asset_name: str) -> int:
+    regex_str = r"(?P<number>[0-9]+)"
+    regex = re.compile(regex_str)
+    match = re.search(regex, asset_name)
+    number = match.group("number")
+    if number:
+        return int(number)
+
+def get_numbers_from_assets(assets: list) -> list:
+    return [get_idx_from_asset_name(asset.get("assetid")) for asset in assets]
+
+def get_asset_name_from_minting_order(idx:str) -> str:
+    minting_order = load_json("json/minted.json")
+    try:
+        idx = int(idx)
+        asset_name = minting_order[idx-1]
+    except:
+        return
+    else:
+        return asset_name
+
+def get_numbers_from_string(string):
+    return re.findall(r"\d+", string)
+
+def get_asset_from_number(number, assets: list) -> dict:
+    for asset in assets:
+        asset_number = asset.get("assetid").replace("unsig_", "")
+
+        if int(asset_number) == int(number):
+            return asset
+
+def order_by_num_props(assets: list) -> dict:
+    ordered = defaultdict(list)
+
+    for asset in assets:
+        num_props = asset.get("num_props")
+        ordered[num_props].append(asset)
+
+    return ordered
 
 def get_certificate_data_by_number(number, certificates: dict) -> dict:
     for _, data in certificates.items():
@@ -16,3 +72,58 @@ def get_certificate_data_by_number(number, certificates: dict) -> dict:
     else:
         return None
 
+def filter_by_time_interval(assets: list, interval_ms) -> list:
+    timestamp_now = round(time.time() * 1000)
+    
+    filtered = list()
+    for asset in assets:
+        timestamp = asset.get("date")
+        if timestamp >= (timestamp_now - interval_ms):
+            filtered.append(asset)
+
+    return filtered
+
+def filter_sales_by_asset(sales, asset_name):
+    return [sale for sale in sales if sale.get("assetid").replace("_","") == asset_name]
+
+def sort_sales_by_date(sales, descending=False):
+    return sorted(sales, key=itemgetter('date'), reverse=descending)
+
+def filter_new_sales(past_sales, new_sales):
+    return [sale for sale in new_sales if sale not in past_sales]
+
+def filter_available_assets(assets):
+    return [asset for asset in assets if not asset.get("reserved")]
+
+
+
+def get_unsig_url(number: str):
+    return f"{UNSIGS_URL}/details/{number.zfill(5)}"
+
+def get_url_from_marketplace_id(marketplace_id: str) -> str:
+    return f"https://cnft.io/token.php?id={marketplace_id}"
+
+def link_asset_to_marketplace(number: str, marketplace_id: str):
+    url = get_url_from_marketplace_id(marketplace_id)
+    return f" [#{str(number).zfill(5)}]({url}) "
+
+def link_assets_to_gallery(numbers, cols):
+    assets_str = ""
+
+    for i, number in enumerate(numbers):
+        link = get_unsig_url(str(number))
+        assets_str += f" [#{str(number).zfill(5)}]({link}) "
+
+        if (i+1) % cols == 0:
+            assets_str += f"\n"
+
+    return assets_str
+
+def unsig_exists(number: str) -> bool:
+    try:
+        if int(number) <= MAX_AMOUNT and int(number) >= 0:
+            return True
+        else:
+            return False
+    except:
+        return False

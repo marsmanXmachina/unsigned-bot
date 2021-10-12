@@ -4,7 +4,9 @@ import random
 from collections import defaultdict
 
 from utility.files_util import load_json
+from utility.geom_util import get_opposite_side, get_direction_from_rotation, get_rotations_from_direction
 
+from deconstruct import get_prop_layers, order_by_color, get_subpattern, format_subpattern
 
 def choose_best_matches(number: str, matches: dict) -> dict:
 
@@ -131,47 +133,6 @@ def get_matches(udata1: dict, udata2: dict) -> list:
 
     return matches   
 
-def get_prop_layers(unsig_data: dict) -> list:
-    props = unsig_data.get("properties")
-
-    multipliers = props.get("multipliers")
-    colors = props.get("colors")
-    rotations = props.get("rotations")
-    distributions = props.get("distributions")
-
-    return list(zip(colors, multipliers, rotations, distributions))
-
-def order_by_color(layers: list) -> dict:
-    ordered = defaultdict(list)
-
-    for layer in layers:
-        color = layer[0]
-        ordered[color].append(layer)
-    
-    return ordered
-
-def get_opposite_side(side:str) -> str:
-    opposite_sides = {
-        "left": "right",
-        "right": "left",
-        "top": "bottom",
-        "bottom": "top"
-    }
-
-    return opposite_sides.get(side)
-
-def get_rotations_from_direction(direction: str) -> list:
-    return [0, 180] if direction == "vertical" else [90, 270]
-
-def get_direction_from_rotation(rotation):
-    rotations = {
-        0: "vertical",
-        90: "horizontal",
-        180: "vertical",
-        270: "horizontal",
-    }
-    return rotations.get(rotation)
-
 def get_side_value(layer: tuple, side: str):
     try:
         dist = layer[3]
@@ -250,7 +211,7 @@ def mirror_layers(layers: list, direction: str) -> list:
     
     return mirrored
 
-def rotate_layer(layer, rotation_diff):
+def rotate_layer(layer, rotation_diff: int) -> tuple:
     distribution = layer[3]
     rotated = list(layer) 
     if distribution == "Normal":
@@ -366,27 +327,6 @@ def check_structural_similarity(layers1, layers2):
         if check(mirrored, layers2):
             return True
 
-def get_subpattern(layers: list) -> dict:
-
-    layers_by_color = order_by_color(layers)
-    
-    subpattern = defaultdict(list)        
-    for color, color_layers in layers_by_color.items():
-        for layer in color_layers:
-            layer_formatted = list(layer)
-            layer_formatted[0] = None
-            subpattern[color].append(tuple(layer_formatted))
-    
-    return subpattern
-
-def format_subpattern(subpattern):
-    formatted = list()
-
-    for _, color_layers in subpattern.items():
-        formatted.append(tuple(sorted(color_layers)))
-
-    return formatted
-
 def get_subpattern_mutations(subpattern):
 
     flattened = format_subpattern(subpattern)
@@ -403,39 +343,3 @@ def get_subpattern_mutations(subpattern):
         mutations.append(formatted)
 
     return mutations
-
-def get_subpattern_names(subpattern):
-
-    NAMES_SINGLE = {
-        (2,"vertical"): "post",
-        (2,"horizontal"): "beam",
-        (4,"vertical"): "triple post",
-        (4,"horizontal"): "triple beam",
-    }
-
-    NAMES_DOUBLE = {
-        (1,1): "diagonal",
-        (1,2): "hourglass",
-        (1,4): "rivers",
-        (2,4): "veins",
-        (2,2): "bulb",
-        (4,4): "triple bulb"
-    }
-
-    names = dict()
-
-    for color, layers in subpattern.items():
-        if len(layers) == 1:
-            layer = layers[0]
-            _, mult, rot, dist = layer
-            direction = get_direction_from_rotation(rot)
-            name = NAMES_SINGLE.get((mult, direction), "no-liner")
-        else:
-            props = list(zip(*layers))
-            mults =  props[1]
-
-            name = NAMES_DOUBLE.get(mults)
-
-        names[color] = name
-    
-    return names

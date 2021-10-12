@@ -3,17 +3,12 @@ import math
 import random
 import re
 import json
-import time
+
 from datetime import datetime
 
 import asyncio
 
-from operator import itemgetter
 from collections import defaultdict, Counter
-
-from utility.files_util import load_json, save_json
-
-from requests_html import HTMLSession, AsyncHTMLSession
 
 import discord
 from discord.ext import commands
@@ -23,18 +18,23 @@ from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
+from utility.files_util import load_json, save_json
+from utility.time_util import timestamp_to_datetime, get_interval_from_period
+from utility.price_util import get_min_prices, get_average_price
 
-from draw import gen_evolution, gen_subpattern, gen_grid, gen_animation, gen_grid_with_matches, delete_image_files
+from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, delete_image_files
 
-from fetch import fetch_data_from_marketplace, update_certificates, get_new_certificates
+from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data
 
-from parsing import get_certificate_data_by_number
+from parsing import *
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
-from deconstruct import get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
+from deconstruct import SUBPATTERN_NAMES, get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
 
+from my_constants import MAX_AMOUNT
 from emojis import *
+from urls import *
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -44,48 +44,17 @@ INVERVAL_LOOP=900
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
 
-BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
-BLOCKFROST_API_HEADERS = {
-    "project_id": BLOCKFROST_API_TOKEN
-}
-
 TOKEN = os.getenv('BOT_TOKEN')
+
 POLICY_ID = os.getenv('POLICY_ID')
 ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
+
 SALES_CHANNEL=os.getenv('SALES_CHANNEL')
 SALES_CHANNEL_ID = int(os.getenv('SALES_CHANNEL_ID'))
+
 GUILD_NAME = os.getenv('GUILD_NAME')
 GUILD_ID = os.getenv('GUILD_ID')
-
 GUILD_IDS=[int(GUILD_ID)]
-
-
-DISCORD_API_URL = "https://discord/api/v9"
-
-CARDANOSCAN_URL = "https://cardanoscan.io"
-BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
-POOL_PM_URL= "https://pool.pm"
-CNFT_URL = "https://cnft.io"
-CNFT_API_URL = "https://api.cnft.io/market/listings"
-
-UNSIGS_URL = "https://www.unsigs.com"
-
-
-MARKETPLACES = {
-    "CNFT.IO": "https://cnft.io/marketplace.php?s=0e14267a8020229adc0184dd25fa3174c3f7d6caadcb4425c70e7c04",
-    "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1"
-}
-
-DISCORD_ESCROWS = {
-    "CNFT": "https://discord.gg/jpxXxMr8Dg",
-    "CardanoNFT": "https://discord.gg/mWDTRdDMVk",
-    "The Hoskinsons": "https://discord.gg/UvFyfsMgfP"
-}
-
-DISCORD_CNFT_ART = "https://discord.gg/AgMWTWDwaS"
-
-MAX_AMOUNT = 31118
-
 
 DISCORD_COLOR_CODES = {
     "blue": "ini",
@@ -93,256 +62,6 @@ DISCORD_COLOR_CODES = {
     "green": "bash"  
 }
 
-INVERVALS_IN_DAYS = {
-    "day": 1,
-    "week": 7,
-    "month": 30,
-}
-
-SUBPATTERN_NAMES = ["no-liner", "post", "triple post", "beam", "triple beam", "diagonal", "hourglass", "rivers", "veins", "bulb", "triple bulb"]
-
-    
-def get_asset_id(asset_name: str) -> str:
-    asset_ids = load_json("json/asset_ids.json")
-    return asset_ids.get(asset_name, None)
-
-def get_asset_name_from_idx(idx: str) -> str:
-    try:
-        index = int(idx)
-    except:
-        return f"unsig{idx}"
-    else:
-        number_str = str(index).zfill(5)
-        return f"unsig{number_str}"
-
-def get_idx_from_asset_name(asset_name: str) -> int:
-    regex_str = r"(?P<number>[0-9]+)"
-    regex = re.compile(regex_str)
-    match = re.search(regex, asset_name)
-    number = match.group("number")
-    if number:
-        return int(number)
-
-def get_numbers_from_assets(assets: list) -> list:
-    return [get_idx_from_asset_name(asset.get("assetid")) for asset in assets]
-
-def get_asset_name_from_minting_order(idx:str):
-    minting_order = load_json("json/minted.json")
-    try:
-        idx = int(idx)
-        asset_name = minting_order[idx-1]
-    except:
-        return
-    else:
-        return asset_name
-
-async def get_ipfs_url(asset_id, asset_name):
-    metadata = await get_metadata(asset_id)
-    if metadata:
-        ipfs_hash = get_ipfs_hash(metadata, asset_id, asset_name)
-        if ipfs_hash:
-            ipfs_url = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
-            return ipfs_url
-
-async def get_ipfs_url_from_file(asset_name):
-    ipfs_urls = load_json("json/ipfs_urls.json")
-
-    return ipfs_urls.get(asset_name, None)
-    
-async def get_metadata(asset_id):
-    tx_id = await get_minting_tx_id(asset_id)
-
-    if tx_id:
-        metadata = await metadata_from_tx_id(tx_id)
-
-        return metadata
-
-async def get_minting_tx_id(asset_id):
-    URL=f"{CARDANOSCAN_URL}/token/{asset_id}/?tab=minttransactions"
-
-    asession = AsyncHTMLSession()
-
-    try:
-        r = await asession.get(URL)
-    except:
-        return
-    else:
-        try:
-            tx_id=r.html.xpath("//*[@id='minttransactions']//a[starts-with(@href,'/transaction')]/text()")[0]
-        except:
-            return
-        else:
-            return tx_id
-
-async def metadata_from_tx_id(tx_id):
-    URL=f"{CARDANOSCAN_URL}/transaction/{tx_id}/?tab=metadata"
-
-    session = HTMLSession()
-
-    try:
-        r = session.get(URL)
-    except:
-        return
-    else:
-        metadata_str=r.html.xpath("//*[@class='metadata-value']/text()")[0]
-        if metadata_str:
-            metadata = json.loads(metadata_str)
-            return metadata
-
-def get_ipfs_hash(metadata, asset_id, asset_name):
-    try:
-        image_url = metadata.get(POLICY_ID).get(asset_name).get("image", None)
-    except:
-        return
-    else:
-        if image_url:   
-            return image_url.rsplit("/")[-1]
-
-def get_unsigs_data(idx:str):
-    unsigs_data = load_json("json/unsigs.json")
-    return unsigs_data.get(idx, None)
-
-def get_minting_number(asset_name):
-    minting_order = load_json("json/minted.json")
-    number = minting_order.index(asset_name) + 1
-    return number
-
-def get_minting_data(number: str):
-    unsigs_minted = load_json("json/unsigs_minted.json")
-    
-    minting_data = unsigs_minted.get(number)
-
-    minting_time = minting_data.get("time")
-    minting_order = minting_data.get("order")
-
-    return (int(minting_order), int(minting_time))
-    
-def get_current_owner_address(token_id: str) -> str:
-    url = f"{CARDANOSCAN_URL}/token/{token_id}?tab=topholders"
-
-    session = HTMLSession()
-
-    try:
-        r = session.get(url)
-    except:
-        address = None
-    else:
-        try:
-            address_str = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/text()")[0]
-            address_id = r.html.xpath("//*[@id='topholders']//a[contains(@href,'address')]/@href")[0]
-            address_id = address_id.rsplit("/")[-1]
-        except:
-            address = None
-        else:
-            address = {
-                "id": address_id,
-                "name": address_str
-            }
-    finally:
-        return address
-
-def unsig_exists(number: str) -> bool:
-    try:
-        if int(number) <= MAX_AMOUNT and int(number) >= 0:
-            return True
-        else:
-            return False
-    except:
-        return False
-
-def get_interval_from_period(period):
-
-    INVERVALS_IN_DAYS = {
-        "day": 1,
-        "week": 7,
-        "month": 30
-    }
-
-    interval = INVERVALS_IN_DAYS.get(period)
-    if interval:
-        return interval * 24 * 3600 * 1000
-    else:
-        return 0
-
-def filter_by_time_interval(assets: list, interval_ms) -> list:
-    timestamp_now = round(time.time() * 1000)
-    
-    filtered = list()
-    for asset in assets:
-        timestamp = asset.get("date")
-        if timestamp >= (timestamp_now - interval_ms):
-            filtered.append(asset)
-
-    return filtered
-
-def timestamp_to_datetime(timestamp_ms):
-    dt = datetime.utcfromtimestamp(timestamp_ms/1000)
-    return dt
-
-
-def filter_sales_by_asset(sales, asset_name):
-    return [sale for sale in sales if sale.get("assetid").replace("_","") == asset_name]
-
-def sort_sales_by_date(sales, descending=False):
-    return sorted(sales, key=itemgetter('date'), reverse=descending)
-
-def filter_new_sales(past_sales, new_sales):
-    return [sale for sale in new_sales if sale not in past_sales]
-
-def filter_available_assets(assets):
-    return [asset for asset in assets if not asset.get("reserved")]
-
-def get_unsig_url(number: str):
-    return f"{UNSIGS_URL}/details/{number.zfill(5)}"
-
-def get_numbers_from_string(string):
-    return re.findall(r"\d+", string)
-
-def order_by_num_props(assets: list) -> dict:
-    ordered = defaultdict(list)
-
-    for asset in assets:
-        num_props = asset.get("num_props")
-        ordered[num_props].append(asset)
-
-    return ordered
-
-def get_min_prices(assets: list) -> list:
-    min_price = min([asset.get("price") for asset in assets])
-    return [asset for asset in assets if asset.get("price") == min_price]
-
-def get_average_price(assets: list) -> float:
-    num_assets = len(assets) 
-    return sum_prices(assets)/num_assets if num_assets else 0  
-
-def sum_prices(assets: list) -> float:
-    return sum([asset.get("price") for asset in assets])
-
-def get_url_from_marketplace_id(marketplace_id: str) -> str:
-    return f"https://cnft.io/token.php?id={marketplace_id}"
-
-def get_asset_from_number(number, assets: list) -> dict:
-    for asset in assets:
-        asset_number = asset.get("assetid").replace("unsig_", "")
-
-        if int(asset_number) == int(number):
-            return asset
-
-def link_asset_to_marketplace(number: str, marketplace_id: str):
-    url = get_url_from_marketplace_id(marketplace_id)
-    return f" [#{str(number).zfill(5)}]({url}) "
-
-def link_assets_to_gallery(numbers, cols):
-    assets_str = ""
-
-    for i, number in enumerate(numbers):
-        link = get_unsig_url(str(number))
-        assets_str += f" [#{str(number).zfill(5)}]({link}) "
-
-        if (i+1) % cols == 0:
-            assets_str += f"\n"
-
-    return assets_str
 
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
@@ -937,6 +656,38 @@ async def faq(ctx: SlashContext, topics: str):
             embed = embed_whales()
         
         await ctx.send(embed=embed)
+
+@slash.slash(
+    name="verse", 
+    description="One unsig to rule them all...", 
+    guild_ids=GUILD_IDS,
+)
+async def verse(ctx: SlashContext):
+    title = f"{EMOJI_CERT} Unsig verse {EMOJI_CERT}"
+    description="..."
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color) 
+
+    verse = """  
+Two distributions for the algorithm in numpy
+Three fundamental colours which set the tone
+Four numbers for the values to multiply
+Four rotations as the quarters of a circle have shown
+
+In the unsig land, 
+where all combined layers lie...
+One unsig to rule them all, 
+One unsig to find them
+One unsig to bring them all, 
+and in its darkness bind them
+    """
+    embed.add_field(name="One unsig to rule them all", value=f"{verse}", inline=False)
+
+    image_url = await get_ipfs_url_from_file("unsig00000")
+    embed.set_image(url=image_url)
+    
+    await ctx.send(embed=embed)
 
 @slash.slash(
     name="help", 
@@ -2032,7 +1783,6 @@ async def fetch_data():
         bot.certs_updated = datetime.utcnow()
     except:
         print("Update certificates failed!")
-
 
     print("Updated:", datetime.now()) 
 

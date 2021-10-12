@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from utility.files_util import load_json
-from matching import order_by_color, get_prop_layers
+from deconstruct import order_by_color, get_prop_layers
 
 DIM = 512
 BORDER = 10
