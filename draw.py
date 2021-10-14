@@ -472,4 +472,25 @@ async def gen_grid_with_matches(best_matches):
     path = f"img/matches_{unsigs_str}.png"
     grid.save(path)
 
+async def gen_image_for_tweet(idx):
+    unsig_data = load_unsig_data(idx)
+
+    background_size = (1024, 512)
+    background = Image.new("RGB", background_size)
+
+    image_array = gen_image_array(unsig_data)
+    image = Image.fromarray(image_array)
+
+    width, height = background_size
+    pos_x = int(width/2 - image.width / 2)
+    pos_y = 0
+    background.paste(image, (pos_x, pos_y))
+    image.close()
+
+    path = f'img/tweet_{idx}.png'
+    background.save(path)
+    background.close()
+
+
+
 

@@ -1,5 +1,6 @@
 import re
 import time
+from datetime import datetime
 from operator import itemgetter
 from collections import defaultdict
 
@@ -127,3 +128,20 @@ def unsig_exists(number: str) -> bool:
             return False
     except:
         return False
+
+def parse_sale(sale_data: dict) -> tuple:
+    marketplace_name = sale_data.get("assetid")
+
+    num_props = sale_data.get("num_props")
+
+    price = sale_data.get("price", None)
+    if price:
+        price = price/1000000
+
+    timestamp_ms = sale_data.get("date")
+    if timestamp_ms:
+        date = datetime.utcfromtimestamp(timestamp_ms/1000).strftime("%Y-%m-%d %H:%M:%S UTC")
+    else:
+        date = None
+    
+    return (marketplace_name, num_props, price, date)

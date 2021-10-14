@@ -30,6 +30,8 @@ from parsing import *
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
+from twitter import tweet_sales, create_twitter_api
+
 from deconstruct import SUBPATTERN_NAMES, get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
 
 from my_constants import MAX_AMOUNT
@@ -70,6 +72,11 @@ bot.offers = None
 bot.offers_updated = None
 bot.certs = load_json("json/certificates.json")
 bot.certs_updated = None
+try:
+    bot.twitter_api = create_twitter_api()
+except:
+    bot.twitter_api = None
+    print("Can not create Twitter API!")
 
 slash = SlashCommand(bot, sync_commands=True)
 
@@ -1193,7 +1200,7 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
                 print("Animation failed!")
                 pass
             else:
-                embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+                embed.set_footer(text=f"\nDiscord Bot by Mar5man")
                 await ctx.send(file=image_file, embed=embed)
                 return 
 
@@ -1205,7 +1212,7 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
             except:
                 pass
 
-        embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+        embed.set_footer(text=f"\nDiscord Bot by Mar5man")
 
         await ctx.send(embed=embed)
 
@@ -1616,7 +1623,7 @@ async def minted(ctx: SlashContext, index: str):
             embed.set_image(url=image_url)
 
 
-        embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
+        embed.set_footer(text=f"\nDiscord Bot by Mar5man")
  
         await ctx.send(embed=embed)
 
@@ -1675,7 +1682,6 @@ async def post_sales(sales):
         for sale_data in sales:
             marketplace_name = sale_data.get("assetid")
             asset_name = marketplace_name.replace("_", "")
-
 
             price = sale_data.get("price")
             price = price/1000000
@@ -1754,11 +1760,19 @@ async def fetch_data():
             bot.sales.extend(new_sales)
             save_json("json/sales.json", bot.sales)
     
-            new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
+            # new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
 
             if bot.guild.name == "unsigned_algorithms":
                 await asyncio.sleep(2)
                 await post_sales(new_sales)
+
+            if not bot.twitter_api:
+                bot.twitter_api = create_twitter_api()
+
+            try:
+                await tweet_sales(bot.twitter_api, new_sales)
+            except:
+                print("Can not tweet sales!")
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
