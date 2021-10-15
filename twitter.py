@@ -9,7 +9,7 @@ from emojis import *
 
 from parsing import parse_sale, get_unsig_url, get_idx_from_asset_name
 
-from draw import gen_image_for_tweet, delete_image_files
+from draw import gen_image_for_tweet, gen_animation, delete_image_files
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -44,15 +44,18 @@ async def tweet_sales(api, sales):
         tweet_string = f"\n...\n{EMOJI_CART} unsig{str(unsig_number).zfill(5)} SOLD {EMOJI_CART}\n\n{EMOJI_MONEYBACK} {price:,.0f} $ADA\n\n{EMOJI_CALENDAR} {date}\n\n{EMOJI_GEAR} {num_props} properties\n\n#unsigsold #unsig{str(unsig_number).zfill(5)}"
     
         try:
-            await gen_image_for_tweet(str(unsig_number))
-            filepath = f"img/tweet_{unsig_number}.png"
+            # await gen_image_for_tweet(str(unsig_number))
+            # filepath = f"img/tweet_{unsig_number}.png"
+
+            await gen_animation(str(unsig_number))
+            filepath = f"img/animation_{unsig_number}.gif"
             media = api.media_upload(filepath)
         except:
             tweet_string += f"\n{unsig_url}"
             api.update_status(status=tweet_string)
         else:
             api.update_status(status=tweet_string, media_ids=[media.media_id])
-            delete_image_files(IMAGE_PATH)
+            delete_image_files(IMAGE_PATH, suffix="gif")
 
 def download_image(num, url) -> str:
     filename = f'temp_{num}.png'

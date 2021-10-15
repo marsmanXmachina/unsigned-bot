@@ -1766,13 +1766,13 @@ async def fetch_data():
                 await asyncio.sleep(2)
                 await post_sales(new_sales)
 
-            if not bot.twitter_api:
-                bot.twitter_api = create_twitter_api()
+                if not bot.twitter_api:
+                    bot.twitter_api = create_twitter_api()
 
-            try:
-                await tweet_sales(bot.twitter_api, new_sales)
-            except:
-                print("Can not tweet sales!")
+                try:
+                    await tweet_sales(bot.twitter_api, new_sales)
+                except:
+                    print("Can not tweet sales!")
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
