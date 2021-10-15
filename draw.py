@@ -411,7 +411,7 @@ async def gen_animation(idx, mode="fade"):
         durations.extend(duration_frames)
     
     durations[0] = 1000
-    durations[-1] = 2000
+    durations[-1] = 5000
     
     base_layer = images_faded[0]
 
