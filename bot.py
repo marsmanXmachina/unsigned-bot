@@ -1772,7 +1772,7 @@ async def fetch_data():
                 try:
                     await tweet_sales(bot.twitter_api, new_sales)
                 except:
-                    print("Can not tweet sales!")
+                    print("Tweeting sales FAILED!")
     
     offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
     if offers_data:
