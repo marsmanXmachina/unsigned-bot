@@ -364,7 +364,7 @@ def v_blend(width = 16):
 
     return result
 
-async def gen_animation(idx, mode="fade"):
+async def gen_animation(idx, mode="fade", backwards=False):
     unsig_data = load_unsig_data(idx)
 
     props = unsig_data.get("properties")
@@ -410,10 +410,19 @@ async def gen_animation(idx, mode="fade"):
         duration_frames[-1] = 1000
         durations.extend(duration_frames)
     
-    durations[0] = 1000
-    durations[-1] = 5000
+    images_faded = images_faded[::-1]
+
+    durations[0] = 3000
+    durations[-1] = 1000
+
+    if backwards:
+        fading_backwards = images_faded[::-1]
+        durations_backwards = durations[::-1]
+
+        images_faded.extend(fading_backwards)
+        durations.extend(durations_backwards)
     
-    base_layer = images_faded[0]
+    base_layer = images[-1]
 
     base_layer.save(f"img/animation_{idx}.gif", format="GIF",  append_images=images_faded[1:], save_all=True, duration=durations, loop=0)
 

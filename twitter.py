@@ -46,9 +46,9 @@ async def tweet_sales(api, sales):
         tweet_string = f"\n...\n{EMOJI_CART} unsig{str(unsig_number).zfill(5)} SOLD {EMOJI_CART}\n\n{EMOJI_MONEYBACK} {price:,.0f} $ADA\n\n{EMOJI_CALENDAR} {date}\n\n{EMOJI_GEAR} {num_props} properties\n\n#unsigsold #unsig{str(unsig_number).zfill(5)}"
     
         try:
-            await gen_animation(str(unsig_number))
+            await gen_animation(str(unsig_number), mode="fade", backwards=True)
             filepath = f"img/animation_{unsig_number}.gif"
-            
+
             media = api.media_upload(filename=filepath, chunked=True, media_category="tweet_gif")
             api.update_status(status=tweet_string, media_ids=[media.media_id])
 
@@ -57,6 +57,7 @@ async def tweet_sales(api, sales):
             tweet_string += f"\n{unsig_url}"
             api.update_status(status=tweet_string)
 
+            delete_image_files(IMAGE_PATH, suffix="gif")
 
 def download_image(num, url) -> str:
     filename = f'temp_{num}.png'
