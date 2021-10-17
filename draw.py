@@ -7,26 +7,26 @@ from PIL import Image, ImageOps
 from utility.files_util import load_json
 from deconstruct import order_by_color, get_prop_layers
 
-DIM = 512
 BORDER = 10
 
+DIM = 512
 DIM_LIST = list(range(DIM))
 U_RANGE = 4294967293
 MEAN = np.mean(DIM_LIST)
 STD = DIM/6
 
 
-def load_unsig_data(idx: str):
+def load_unsig_data(idx):
     unsigs = load_json("json/unsigs.json")
-    return unsigs.get(idx)
+    return unsigs.get(str(idx))
 
 def norm(x , mean , std):
     p = (np.pi*std) * np.exp(-0.5*((x-mean)/std)**2)
     return p
 
-def scale_make2d(s):
+def scale_make2d(s, dim):
     scaled = np.interp(s, (s.min(), s.max()), (0, U_RANGE))
-    two_d = np.tile(scaled, (DIM, 1))
+    two_d = np.tile(scaled, (dim, 1))
     return two_d
 
 #probability and cumulative distribution
@@ -34,23 +34,35 @@ p_1d = np.array(norm(DIM_LIST, MEAN, STD)).astype(np.uint32)
 c_1d = np.cumsum(p_1d)
 
 #2d arrays
-p_2d = scale_make2d(p_1d)
-c_2d = scale_make2d(c_1d)
+p_2d = scale_make2d(p_1d, DIM)
+c_2d = scale_make2d(c_1d, DIM)
 
 #dicts for retrieving values
-dists = {'Normal': p_2d, 'CDF': c_2d}
+DISTS = {'Normal': p_2d, 'CDF': c_2d}
+CHANNELS = {'Red': 0, 'Green': 1, 'Blue': 2}
 
-channels = {'Red': 0, 'Green': 1, 'Blue': 2}
+def get_distributions(dim):
+    dims = list(range(dim))
+    dims_mean = np.mean(dims)
+    std = dim/6
+
+    p_1d = np.array(norm(dims, dims_mean, std)).astype(np.uint32)
+    c_1d = np.cumsum(p_1d)
+
+    p_2d = scale_make2d(p_1d, dim)
+    c_2d = scale_make2d(c_1d, dim)
+
+    return {'Normal': p_2d, 'CDF': c_2d}
 
 
-def gen_layer(mult, dist, rot, c):
+def gen_layer(mult, dist, rot, c, dists=DISTS):
     n = np.zeros((DIM, DIM, 3)).astype(np.uint32)
     buffer =  mult * np.rot90(dists[dist], k=(rot / 90))
     n[ :, :, c ] = n[ :, :, c ] + buffer
 
     return n
 
-def add_layer(n, mult, dist, rot, c):
+def add_layer(n, mult, dist, rot, c, dists=DISTS):
     buffer =  mult * np.rot90(dists[dist], k=(rot / 90))
     n[ :, :, c ] = n[ :, :, c ] + buffer
 
@@ -62,10 +74,15 @@ def image_from_ndarray(n):
 
     return image
 
-def gen_image_array(unsig_data):
+def gen_image_array(unsig_data, dim=DIM):
     props = unsig_data['properties']
 
-    n = np.zeros((DIM, DIM, 3)).astype(np.uint32)
+    if dim == DIM:
+        dists = DISTS
+    else:
+        dists = get_distributions(dim)
+
+    n = np.zeros((dim, dim, 3)).astype(np.uint32)
 
     for i in range(unsig_data['num_props']):
         mult = props['multipliers'][i]
@@ -73,9 +90,9 @@ def gen_image_array(unsig_data):
         dist = props['distributions'][i]
         rot = props['rotations'][i]
 
-        c = channels[col]
+        c = CHANNELS[col]
 
-        n = add_layer(n, mult, dist, rot, c)
+        n = add_layer(n, mult, dist, rot, c, dists=dists)
 
     n = np.interp(n, (0, U_RANGE), (0, 255)).astype(np.uint8)
 
@@ -117,7 +134,7 @@ def transform_image(image):
     return transformed_image
 
 def add_border(image):
-    with_border = ImageOps.expand(image,border=10,fill='white')
+    with_border = ImageOps.expand(image,border=BORDER,fill='white')
     return with_border
 
 
@@ -142,7 +159,7 @@ async def gen_evolution(idx, show_single_layers=True, extended=False):
         col = props['colors'][i]
         dist = props['distributions'][i]
         rot = props['rotations'][i]
-        c = channels[col]
+        c = CHANNELS[col]
 
         if n is None:
             n = gen_layer(mult, dist, rot, c)
@@ -238,7 +255,7 @@ async def gen_subpattern(idx):
 
         for layer in color_layers:
             col, mult, rot, dist = layer
-            c = channels[col]
+            c = CHANNELS[col]
 
             if n_color is None:
                 n_color = gen_layer(mult, dist, rot, c)
@@ -379,7 +396,7 @@ async def gen_animation(idx, mode="fade", backwards=False):
         col = props['colors'][i]
         dist = props['distributions'][i]
         rot = props['rotations'][i]
-        c = channels[col]
+        c = CHANNELS[col]
 
         if n is None:
             n = gen_layer(mult, dist, rot, c)
@@ -485,10 +502,10 @@ async def gen_grid_with_matches(best_matches):
 async def gen_image_for_tweet(idx):
     unsig_data = load_unsig_data(idx)
 
-    background_size = (1024, 512)
+    background_size = (4096, 2048)
     background = Image.new("RGB", background_size)
 
-    image_array = gen_image_array(unsig_data)
+    image_array = gen_image_array(unsig_data, dim=2048)
     image = Image.fromarray(image_array)
 
     width, height = background_size
@@ -501,6 +518,17 @@ async def gen_image_for_tweet(idx):
     background.save(path)
     background.close()
 
+async def gen_unsig(idx, dim):
+    unsig_data = load_unsig_data(idx)
+
+    image_array = gen_image_array(unsig_data, dim)
+    image = Image.fromarray(image_array)
+
+    path = f'img/unsig{idx}.png'
+    image.save(path)
+    image.close()
+
+    return path
 
 
 
