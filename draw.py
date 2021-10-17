@@ -39,6 +39,7 @@ c_2d = scale_make2d(c_1d)
 
 #dicts for retrieving values
 dists = {'Normal': p_2d, 'CDF': c_2d}
+
 channels = {'Red': 0, 'Green': 1, 'Blue': 2}
 
 

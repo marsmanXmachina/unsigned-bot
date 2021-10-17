@@ -8,7 +8,7 @@ import asyncio
 
 from emojis import *
 
-
+from fetch import get_ipfs_url_from_file
 from parsing import parse_sale, get_unsig_url, get_idx_from_asset_name
 
 from draw import gen_image_for_tweet, gen_animation, delete_image_files
@@ -43,24 +43,35 @@ async def tweet_sales(api, sales):
         unsig_number = get_idx_from_asset_name(marketplace_name)
         unsig_url = get_unsig_url(str(unsig_number))
 
+        asset_name = marketplace_name.replace("_", "")
+        
         tweet_string = f"\n...\n{EMOJI_CART} unsig{str(unsig_number).zfill(5)} SOLD {EMOJI_CART}\n\n{EMOJI_MONEYBACK} {price:,.0f} $ADA\n\n{EMOJI_CALENDAR} {date}\n\n{EMOJI_GEAR} {num_props} properties\n\n#unsigsold #unsig{str(unsig_number).zfill(5)}"
-    
-        try:
-            await gen_animation(str(unsig_number), mode="fade", backwards=True)
-            filepath = f"img/animation_{unsig_number}.gif"
 
-            media = api.media_upload(filename=filepath, chunked=True, media_category="tweet_gif")
-            api.update_status(status=tweet_string, media_ids=[media.media_id])
+        tweet_string += f"\n{unsig_url}"
+        api.update_status(status=tweet_string)
 
-            delete_image_files(IMAGE_PATH, suffix="gif")
-        except:
-            tweet_string += f"\n{unsig_url}"
-            api.update_status(status=tweet_string)
+        # try:
+        #     ipfs_url =  await get_ipfs_url_from_file(asset_name)
+        #     filepath_image = await download_image(unsig_number, ipfs_url)
 
-            delete_image_files(IMAGE_PATH, suffix="gif")
+        #     media_img = api.media_upload(filename=filepath_image)
 
-def download_image(num, url) -> str:
-    filename = f'temp_{num}.png'
+        #     await gen_animation(str(unsig_number), mode="fade", backwards=True)
+        #     filepath_animation = f"img/animation_{unsig_number}.gif"
+
+        #     media_gif = api.media_upload(filename=filepath_animation, chunked=True, media_category="tweet_gif")
+
+        #     api.update_status(status=tweet_string, media_ids=[media_img.media_id])
+
+        # except:
+        #     tweet_string += f"\n{unsig_url}"
+        #     api.update_status(status=tweet_string)
+        # finally:
+        #     delete_image_files(IMAGE_PATH, suffix="png")
+        #     delete_image_files(IMAGE_PATH, suffix="gif")
+
+async def download_image(num, url) -> str:
+    filename = f'img/temp_{num}.png'
     response = requests.get(url, stream=True)
     if response.status_code == 200:
         with open(filename, 'wb') as image:
@@ -68,3 +79,4 @@ def download_image(num, url) -> str:
                 image.write(chunk)
     
     return filename
+
