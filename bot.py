@@ -709,7 +709,7 @@ async def help(ctx: SlashContext):
     embed = discord.Embed(title=title, description=description, color=color) 
 
     embed.add_field(name="/faq", value="show important information", inline=False)
-    embed.add_field(name="/unsig + `integer`", value="show unsig with given number", inline=False)
+    embed.add_field(name="/unsig + `integer`", value="show data of unsig with given number", inline=False)
     embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
     embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
@@ -1760,7 +1760,7 @@ async def fetch_data():
             bot.sales.extend(new_sales)
             save_json("json/sales.json", bot.sales)
     
-            # new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 4)
+            new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 2)
 
             if bot.guild.name == "unsigned_algorithms":
                 await asyncio.sleep(2)
