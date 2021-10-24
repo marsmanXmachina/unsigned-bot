@@ -10,7 +10,9 @@ from requests_html import HTMLSession, AsyncHTMLSession
 
 import aiohttp
 
-from utility.files_util import load_json, save_json
+from utility.files_util import load_json
+
+from parsing import get_idx_from_asset_name
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -100,6 +102,7 @@ async def fetch_data_from_marketplace(url, policy_id: str, sold=False) -> list:
     if sold:
         payload["sold"] = "true"
 
+
     try:
         responses = await fetch_all(url, payload)
     except:
@@ -107,8 +110,9 @@ async def fetch_data_from_marketplace(url, policy_id: str, sold=False) -> list:
         return
     else:
         if responses:
-            assets = get_data_from_reponses(responses)
+            assets = get_data_from_responses(responses)
             if assets:
+
                 assets_parsed = parse_data(assets, sold)
 
                 assets_extended = add_num_props(assets_parsed)
@@ -116,7 +120,7 @@ async def fetch_data_from_marketplace(url, policy_id: str, sold=False) -> list:
                 return assets_extended
 
 
-def get_data_from_reponses(responses) -> list:
+def get_data_from_responses(responses) -> list:
     num_assets_found = 0
 
     assets = list()
@@ -139,11 +143,14 @@ def get_data_from_reponses(responses) -> list:
     return assets
 
 def parse_data(assets: list, sold=False) -> list:
+
     parsed = list()
 
     for asset in assets:
         asset_parsed = dict()
-        asset_parsed["assetid"] = asset.get("metadata").get("name")
+
+        name = asset.get("metadata").get("name")
+        asset_parsed["assetid"] = name.replace("_", "")
         asset_parsed["unit"] = asset.get("unit")
         asset_parsed["price"] = asset.get("price")
         asset_parsed["sold"] = asset.get("sold")
@@ -165,9 +172,9 @@ def add_num_props(assets: list) -> list:
 
     for asset in assets:
         asset_name = asset.get("assetid")
-        idx = str(int(asset_name.replace("unsig_","")))
+        idx = get_idx_from_asset_name(asset_name)
 
-        unsigs_data = unsigs.get(idx)
+        unsigs_data = unsigs.get(str(idx))
         asset["num_props"] = unsigs_data.get("num_props")
     
     return assets

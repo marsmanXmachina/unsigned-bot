@@ -264,6 +264,38 @@ def embed_whales():
 
     return embed
 
+def embed_rarity():
+    title = f"{EMOJI_DIAMOND} About rarity {EMOJI_DIAMOND}"
+    description="You aren't as unique as you think..."
+    color=discord.Colour.blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    RARITY_RESOURCES = {
+        "Statistics and rare bananas": "https://discord.com/channels/843043397526093885/843043398592233485/873911353381892136",
+        "Kelumax Repository": "https://drive.google.com/drive/folders/1z8J1AsrLlEJ6WnLj2-IbgFvfLpjx1H8X?usp=sharing"
+    }
+
+    info_str = ""
+    for name, link in RARITY_RESOURCES.items():
+        info_str += f"{EMOJI_ARROW_RIGHT} [{name}]({link})\n"
+
+    embed.add_field(name=f"{EMOJI_CERT} Resources {EMOJI_CERT}", value=info_str, inline=False)
+
+
+    RARITY_TOOLS = {
+        "NFT RARITY": "https://nftrarity.is/#/unsigned_algorithms"
+    }
+
+    tools_str = ""
+    for name, link in RARITY_TOOLS.items():
+        tools_str += f"{EMOJI_ARROW_RIGHT} [{name}]({link})\n"
+
+    embed.add_field(name=f"{EMOJI_GEAR} Tools {EMOJI_GEAR}", value=tools_str, inline=False)
+
+    return embed
+
+
 def embed_policy():
     title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
     description="The official one and only..."
@@ -294,7 +326,7 @@ def embed_offers(assets_ordered: dict):
             for asset in low_priced_assets:
                 min_price = asset.get("price")/1000000
                 asset_name = asset.get("assetid")
-                number = asset_name.replace("unsig_", "")
+                number = asset_name.replace("unsig", "")
                 marketplace_id = asset.get("id")
                 offers_str += f" [#{number.zfill(5)}]({get_url_from_marketplace_id(marketplace_id)}) "
             
@@ -342,7 +374,7 @@ def embed_sales(assets, prices_type, period):
                     max_priced = sorted_by_price[j]
                     price = max_priced.get("price")/1000000
                     name = max_priced.get("assetid")
-                    number = name.replace("unsig_", "")
+                    number = name.replace("unsig", "")
                     timestamp_ms = max_priced.get("date")
                     dt = timestamp_to_datetime(timestamp_ms)
 
@@ -643,6 +675,10 @@ def embed_certificate(number, data: dict, num_certificates: int, feed=False):
                 create_choice(
                     name="About whales",
                     value="whales"
+                ),
+                create_choice(
+                    name="About rarity",
+                    value="rarity"
                 )
             ]
         )
@@ -661,6 +697,9 @@ async def faq(ctx: SlashContext, topics: str):
 
         if topics == "whales":
             embed = embed_whales()
+
+        if topics == "rarity":
+            embed = embed_rarity()
         
         await ctx.send(embed=embed)
 
@@ -1680,8 +1719,7 @@ async def post_sales(sales):
         print(f"Can't find the sales feed channel")
     else:
         for sale_data in sales:
-            marketplace_name = sale_data.get("assetid")
-            asset_name = marketplace_name.replace("_", "")
+            asset_name = sale_data.get("assetid")
 
             price = sale_data.get("price")
             price = price/1000000

@@ -9,6 +9,9 @@ POOL_PM_URL= "https://pool.pm"
 CNFT_URL = "https://cnft.io"
 CNFT_API_URL = "https://api.cnft.io/market/listings"
 
+TOKHUN_URL = "https://tokhun.io/marketplace"
+TOKHUN_API_URL = "https://tokhun.io/api/v1/marketplace"
+
 UNSIGS_URL = "https://www.unsigs.com"
 
 

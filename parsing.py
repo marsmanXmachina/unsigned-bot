@@ -48,7 +48,7 @@ def get_numbers_from_string(string):
 
 def get_asset_from_number(number, assets: list) -> dict:
     for asset in assets:
-        asset_number = asset.get("assetid").replace("unsig_", "")
+        asset_number = asset.get("assetid").replace("unsig", "")
 
         if int(asset_number) == int(number):
             return asset
@@ -99,10 +99,13 @@ def filter_available_assets(assets):
 
 
 def get_unsig_url(number: str):
-    return f"{UNSIGS_URL}/details/{number.zfill(5)}"
+    return f"{UNSIGS_URL}/details/{str(number).zfill(5)}"
 
-def get_url_from_marketplace_id(marketplace_id: str) -> str:
-    return f"https://cnft.io/token.php?id={marketplace_id}"
+def get_url_from_marketplace_id(marketplace_id: str, marketplace="cnft") -> str:
+    if marketplace == "cnft":
+        return f"https://cnft.io/token.php?id={marketplace_id}"
+    if marketplace == "tokhun":
+        return f"https://tokhun.io/marketplace/{marketplace_id}"
 
 def link_asset_to_marketplace(number: str, marketplace_id: str):
     url = get_url_from_marketplace_id(marketplace_id)

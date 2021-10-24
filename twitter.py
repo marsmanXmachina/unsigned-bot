@@ -42,8 +42,6 @@ async def tweet_sales(api, sales):
         marketplace_name, num_props, price, date = parse_sale(sale)
         unsig_number = get_idx_from_asset_name(marketplace_name)
         unsig_url = get_unsig_url(str(unsig_number))
-
-        asset_name = marketplace_name.replace("_", "")
         
         tweet_string = f"\n...\n{EMOJI_CART} unsig{str(unsig_number).zfill(5)} SOLD {EMOJI_CART}\n\n{EMOJI_MONEYBACK} {price:,.0f} $ADA\n\n{EMOJI_CALENDAR} {date}\n\n{EMOJI_GEAR} {num_props} properties\n\n#unsigsold #unsig{str(unsig_number).zfill(5)}"
 
