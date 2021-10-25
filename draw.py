@@ -2,10 +2,12 @@ import os
 import math
 import asyncio
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw
 
 from utility.files_util import load_json
 from deconstruct import order_by_color, get_prop_layers
+
+from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, get_color_frequencies
 
 BORDER = 10
 
@@ -531,4 +533,38 @@ async def gen_unsig(idx, dim):
     return path
 
 
+async def gen_color_histogram(idx, color_frequencies, sorted=False):
+    if sorted:
+        frequencies_sorted = sorted(color_frequencies.items(), key=lambda x: x[1], reverse=True)
+    else:
+        frequencies_sorted = [(c, color_frequencies.get(c)) for c in COLORS_SORTED]
 
+    PADDING = 25
+    COLOR_HEIGHT = 30
+    WIDTH = 1080
+    HEIGHT = len(frequencies_sorted) * COLOR_HEIGHT + 2 * PADDING
+    GRAPHIC_WIDTH = WIDTH - 2 * PADDING
+
+    image = Image.new("RGB", (WIDTH, HEIGHT))
+
+    for i, (color, pixels) in enumerate(frequencies_sorted):
+        background = Image.new("RGB", (GRAPHIC_WIDTH, COLOR_HEIGHT-4))
+
+        color_image = ImageDraw.Draw(background)
+ 
+        percentage = pixels / TOTAL_PIXELS
+
+        outline = "#ffffff" if color == (0,0,0) else None
+        color_image.rectangle(((0,0), (int(GRAPHIC_WIDTH*percentage), COLOR_HEIGHT-4)), fill=rgb_2_hex(color), outline = outline)
+
+        image.paste(background, (PADDING, i*COLOR_HEIGHT+PADDING))
+        background.close()
+
+    if not sorted:
+        image = image.transpose(Image.ROTATE_90)
+
+    path = f"img/output_colors_{idx}.png"
+    image.save(path)
+    image.close()
+
+    return path

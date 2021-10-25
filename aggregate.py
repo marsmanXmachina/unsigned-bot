@@ -35,3 +35,5 @@ if __name__ == '__main__':
     total_assets = asyncio.run(aggregate_data_from_marketplaces(sold=True))
 
     save_json("json/total_sales.json", total_assets)
+
+

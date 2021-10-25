@@ -22,7 +22,8 @@ from utility.files_util import load_json, save_json
 from utility.time_util import timestamp_to_datetime, get_interval_from_period
 from utility.price_util import get_min_prices, get_average_price
 
-from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, delete_image_files
+from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
+from colors import get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color
 
 from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data
 
@@ -265,7 +266,7 @@ def embed_whales():
     return embed
 
 def embed_rarity():
-    title = f"{EMOJI_DIAMOND} About rarity {EMOJI_DIAMOND}"
+    title = f"{EMOJI_SNOWFLAKE} About rarity {EMOJI_SNOWFLAKE}"
     description="You aren't as unique as you think..."
     color=discord.Colour.blue()
 
@@ -612,6 +613,34 @@ def embed_certificate(number, data: dict, num_certificates: int, feed=False):
 
     return embed
     
+def add_output_colors(embed, color_frequencies):
+    pass
+
+def embed_output_colors(number, color_frequencies):
+    asset_name = get_asset_name_from_idx(number)
+    
+    num_colors = get_total_colors(color_frequencies)
+
+    title = f"{EMOJI_PALETTE} colors {asset_name} {EMOJI_PALETTE}"
+    description=f"Unsig has **{num_colors} / 64** output colors"
+    color=discord.Colour.dark_blue()
+
+    unsig_url = get_unsig_url(number)
+
+    embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
+
+
+    top_colors = get_top_colors(color_frequencies)
+
+    top_colors_str = ""
+    for i, (color, percentage) in enumerate(top_colors.items()):
+        color_hex = rgb_2_hex(color)
+        color_link = link_hex_color(color_hex)
+        top_colors_str += f" {i+1}. [{color_hex}]({color_link}) to **{percentage:.2%}**\n"
+
+    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors {EMOJI_ARROW_DOWN}", value=top_colors_str, inline=False)
+
+    return embed
 
 # @slash.slash(
 #     name="fund", 
@@ -753,6 +782,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
     embed.add_field(name="/subs + `integer`", value="show subpattern of your unsig", inline=False)
+    embed.add_field(name="/colors + `integer`", value="show output colors of your unsig", inline=False)
     embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
@@ -1154,6 +1184,52 @@ async def cert(ctx: SlashContext, number: str):
 
 
 @slash.slash(
+    name="colors", 
+    description="show output colors of given unsig", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="Number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def colors(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+    else:
+
+        number = str(int(number))
+
+        color_frequencies = get_color_frequencies(number)
+
+        embed = embed_output_colors(number, color_frequencies)
+
+        embed.set_footer(text=f"\nDiscord Bot by Mar5man")
+
+        try:
+            image_path = await gen_color_histogram(number, color_frequencies)
+            image_file = discord.File(image_path, filename="image.png")
+            if image_file:
+                embed.set_image(url="attachment://image.png")
+            delete_image_files(IMAGE_PATH)
+        except:
+            await ctx.send(content=f"I can't generate color histogram of your unsig.")
+            return
+        else:
+            await ctx.send(file=image_file, embed=embed)
+
+
+@slash.slash(
     name="unsig", 
     description="show unsig with given number", 
     guild_ids=GUILD_IDS,
@@ -1455,7 +1531,6 @@ async def subs(ctx: SlashContext, number: str):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        
         
         if len(layers) > 1:
             name_idx = 1
