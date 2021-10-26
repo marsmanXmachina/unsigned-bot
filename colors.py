@@ -185,5 +185,12 @@ def link_hex_color(color_hex):
     color_hex = color_hex.replace("#", "")
     return f"{COLOR_HEX_URL}/color/{color_hex}"
 
+def calc_pixel_percentages(color_frequencies: dict) -> dict:
+    return {k: v/TOTAL_PIXELS for k, v in color_frequencies.items()}
+
+def get_max_percentage(percentages: dict) -> float:
+    return max(percentages.values())
+
+
 
 

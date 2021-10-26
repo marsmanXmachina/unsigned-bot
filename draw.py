@@ -7,7 +7,7 @@ from PIL import Image, ImageOps, ImageDraw
 from utility.files_util import load_json
 from deconstruct import order_by_color, get_prop_layers
 
-from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, get_color_frequencies
+from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, calc_pixel_percentages, get_max_percentage
 
 BORDER = 10
 
@@ -533,16 +533,33 @@ async def gen_unsig(idx, dim):
     return path
 
 
-async def gen_color_histogram(idx, color_frequencies, sort_colors=False):
+async def gen_color_histogram(idx: str, color_frequencies: dict, sort_colors=False):
     if sort_colors:
         frequencies_sorted = sorted(color_frequencies.items(), key=lambda x: x[1], reverse=True)
     else:
         frequencies_sorted = [(c, color_frequencies.get(c)) for c in COLORS_SORTED]
 
+    percentages = calc_pixel_percentages(color_frequencies)
+    max_percentage = get_max_percentage(percentages)
+
+    WIDHTS_FACTORS = {
+        0.125: 0.5,
+        0.25: 1,
+        0.5: 2,
+        1: 4
+    }
+
+    def get_width_factor(max_percentage):
+        for limit, factor in WIDHTS_FACTORS.items():
+            if max_percentage <= limit:
+                return factor
+
     PADDING = 25
     COLOR_HEIGHT = 30
-    WIDTH = 1080
+    BASIC_WIDTH = 1080
+    WIDTH = int(BASIC_WIDTH * get_width_factor(max_percentage))
     HEIGHT = len(frequencies_sorted) * COLOR_HEIGHT + 2 * PADDING
+    MAX_BAR_WIDTH = 4 * BASIC_WIDTH - 2 * PADDING
     GRAPHIC_WIDTH = WIDTH - 2 * PADDING
 
     image = Image.new("RGB", (WIDTH, HEIGHT))
@@ -555,7 +572,7 @@ async def gen_color_histogram(idx, color_frequencies, sort_colors=False):
         percentage = pixels / TOTAL_PIXELS
 
         outline = "#ffffff" if color == (0,0,0) else None
-        color_image.rectangle(((0,0), (int(GRAPHIC_WIDTH*percentage), COLOR_HEIGHT-4)), fill=rgb_2_hex(color), outline = outline)
+        color_image.rectangle(((0,0), (int(MAX_BAR_WIDTH * percentage), COLOR_HEIGHT-4)), fill=rgb_2_hex(color), outline = outline)
 
         image.paste(background, (PADDING, i*COLOR_HEIGHT+PADDING))
         background.close()

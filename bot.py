@@ -648,7 +648,7 @@ def embed_output_colors(number, color_frequencies):
 
 def embed_color_ranking():
     title = f"{EMOJI_PALETTE} Color Rarities {EMOJI_PALETTE} "
-    description=f"based an cumulative pixel amount in whole collection"
+    description=f"based on cumulative pixel amount in whole collection"
     color=discord.Colour.dark_blue()
 
     embed = discord.Embed(title=title, description=description, color=color)
@@ -1223,7 +1223,7 @@ async def cert(ctx: SlashContext, number: str):
 
 @slash.slash(
     name="color-ranking", 
-    description="show output colors of given unsig", 
+    description="show color ranking", 
     guild_ids=GUILD_IDS
 )
 async def color_ranking(ctx: SlashContext):
