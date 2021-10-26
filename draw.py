@@ -533,8 +533,8 @@ async def gen_unsig(idx, dim):
     return path
 
 
-async def gen_color_histogram(idx, color_frequencies, sorted=False):
-    if sorted:
+async def gen_color_histogram(idx, color_frequencies, sort_colors=False):
+    if sort_colors:
         frequencies_sorted = sorted(color_frequencies.items(), key=lambda x: x[1], reverse=True)
     else:
         frequencies_sorted = [(c, color_frequencies.get(c)) for c in COLORS_SORTED]
@@ -560,7 +560,7 @@ async def gen_color_histogram(idx, color_frequencies, sorted=False):
         image.paste(background, (PADDING, i*COLOR_HEIGHT+PADDING))
         background.close()
 
-    if not sorted:
+    if not sort_colors:
         image = image.transpose(Image.ROTATE_90)
 
     path = f"img/output_colors_{idx}.png"

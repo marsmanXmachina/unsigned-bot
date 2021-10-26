@@ -23,7 +23,7 @@ from utility.time_util import timestamp_to_datetime, get_interval_from_period
 from utility.price_util import get_min_prices, get_average_price
 
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
-from colors import get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color
+from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color
 
 from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data
 
@@ -619,11 +619,12 @@ def add_output_colors(embed, color_frequencies, num_colors=10):
 
     top_colors_str = ""
     for i, (color, percentage) in enumerate(top_colors.items()):
+        color_rank = COLOR_RANKING.get(color)
         color_hex = rgb_2_hex(color)
         color_link = link_hex_color(color_hex)
-        top_colors_str += f" {i+1}. [{color_hex}]({color_link}) to **{percentage:.2%}**\n"
+        top_colors_str += f" {i+1}. [{color_hex}]({color_link}) to **{percentage:.2%}** `[{color_rank}]`\n"
 
-    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors {EMOJI_ARROW_DOWN}", value=top_colors_str, inline=False)
+    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors [rarity rank] {EMOJI_ARROW_DOWN}", value=top_colors_str, inline=False)
 
 
 def embed_output_colors(number, color_frequencies):
@@ -631,7 +632,7 @@ def embed_output_colors(number, color_frequencies):
     
     num_colors = get_total_colors(color_frequencies)
 
-    title = f"{EMOJI_PALETTE} colors {asset_name} {EMOJI_PALETTE}"
+    title = f"{EMOJI_PALETTE} colors {asset_name} {EMOJI_PALETTE} "
     description=f"Unsig has **{num_colors} / 64** output colors"
     color=discord.Colour.dark_blue()
 
@@ -642,6 +643,19 @@ def embed_output_colors(number, color_frequencies):
     add_output_colors(embed, color_frequencies)
 
     return embed
+
+def embed_color_ranking():
+    title = f"{EMOJI_PALETTE} Color Rarities {EMOJI_PALETTE} "
+    description=f"based an cumulative pixel amount in whole collection"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    total_pixels = sum(PIXELS_COLORS.values())
+
+    color_ranking_str = ""
+
+    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors [rarity rank] {EMOJI_ARROW_DOWN}", value=color_ranking_str, inline=False)
 
 # @slash.slash(
 #     name="fund", 
