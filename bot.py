@@ -4,6 +4,8 @@ import random
 import re
 import json
 
+import numpy as np
+
 from datetime import datetime
 
 import asyncio
@@ -653,9 +655,29 @@ def embed_color_ranking():
 
     total_pixels = sum(PIXELS_COLORS.values())
 
-    color_ranking_str = ""
+    ordered_ranking = sorted(COLOR_RANKING.items(), key=lambda x:x[1], reverse=False)
 
-    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors [rarity rank] {EMOJI_ARROW_DOWN}", value=color_ranking_str, inline=False)
+    color_ranking_list = list()
+    for i, (color, rank) in enumerate(ordered_ranking):
+        color_hex = rgb_2_hex(color)
+        color_link = link_hex_color(color_hex)
+        pixels = PIXELS_COLORS.get(color)
+        percentage = pixels / total_pixels
+        color_ranking_list.append(f" `{rank}.`[{color_hex}]({color_link}), **{percentage:.2%}**\n")
+
+    PARTS = 8
+    splitted = np.array_split(color_ranking_list, PARTS)
+    for i, part in enumerate(splitted):
+        if i == 0:
+            title = f"{EMOJI_ARROW_DOWN} Rarity Ranking {EMOJI_ARROW_DOWN}"
+        else: 
+            title = "..."
+        
+        part_str = "".join(part)
+
+        embed.add_field(name=title, value=part_str, inline=False)
+
+    return embed
 
 # @slash.slash(
 #     name="fund", 
@@ -798,6 +820,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
     embed.add_field(name="/subs + `integer`", value="show subpattern of your unsig", inline=False)
     embed.add_field(name="/colors + `integer`", value="show output colors of your unsig", inline=False)
+    embed.add_field(name="/color-ranking", value="show color ranking", inline=False)
     embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
     embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
     embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
@@ -1196,6 +1219,31 @@ async def cert(ctx: SlashContext, number: str):
             await ctx.send(content=f"I can't embed certificate for your unsig.")
         else:
             await ctx.send(embed=embed)
+
+
+@slash.slash(
+    name="color-ranking", 
+    description="show output colors of given unsig", 
+    guild_ids=GUILD_IDS
+)
+async def color_ranking(ctx: SlashContext):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    embed = embed_color_ranking()
+
+    try:
+        image_path = "img/color_freqs.jpg" 
+        image_file = discord.File(image_path, filename="image.jpg")
+        if image_file:
+            embed.set_image(url="attachment://image.jpg")
+    except:
+        await ctx.send(content=f"I can't generate color ranking.")
+        return
+    else:
+        await ctx.send(file=image_file, embed=embed)
 
 
 @slash.slash(
