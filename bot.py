@@ -613,8 +613,18 @@ def embed_certificate(number, data: dict, num_certificates: int, feed=False):
 
     return embed
     
-def add_output_colors(embed, color_frequencies):
-    pass
+def add_output_colors(embed, color_frequencies, num_colors=10):
+
+    top_colors = get_top_colors(color_frequencies, num_ranks=num_colors)
+
+    top_colors_str = ""
+    for i, (color, percentage) in enumerate(top_colors.items()):
+        color_hex = rgb_2_hex(color)
+        color_link = link_hex_color(color_hex)
+        top_colors_str += f" {i+1}. [{color_hex}]({color_link}) to **{percentage:.2%}**\n"
+
+    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors {EMOJI_ARROW_DOWN}", value=top_colors_str, inline=False)
+
 
 def embed_output_colors(number, color_frequencies):
     asset_name = get_asset_name_from_idx(number)
@@ -629,16 +639,7 @@ def embed_output_colors(number, color_frequencies):
 
     embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
-
-    top_colors = get_top_colors(color_frequencies)
-
-    top_colors_str = ""
-    for i, (color, percentage) in enumerate(top_colors.items()):
-        color_hex = rgb_2_hex(color)
-        color_link = link_hex_color(color_hex)
-        top_colors_str += f" {i+1}. [{color_hex}]({color_link}) to **{percentage:.2%}**\n"
-
-    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors {EMOJI_ARROW_DOWN}", value=top_colors_str, inline=False)
+    add_output_colors(embed, color_frequencies)
 
     return embed
 
@@ -1297,6 +1298,9 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
         embed_num_props(embed, unsigs_data)
 
         embed_props(embed, unsigs_data)
+
+        color_frequencies = get_color_frequencies(number)
+        add_output_colors(embed, color_frequencies, num_colors=6)
 
         add_subpattern(embed, unsigs_data)
 
