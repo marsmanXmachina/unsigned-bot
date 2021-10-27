@@ -25,7 +25,7 @@ from utility.time_util import timestamp_to_datetime, get_interval_from_period
 from utility.price_util import get_min_prices, get_average_price
 
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
-from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color
+from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
 
 from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data
 
@@ -625,6 +625,10 @@ def add_output_colors(embed, color_frequencies, num_colors=10):
         color_hex = rgb_2_hex(color)
         color_link = link_hex_color(color_hex)
         top_colors_str += f" {i+1}. [{color_hex}]({color_link}) to **{percentage:.2%}** `[{color_rank}]`\n"
+    
+    color_rarity = calc_color_rarity(color_frequencies)
+
+    top_colors_str += f" => weighted color rank: **{color_rarity:.2f}**\n"
 
     embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top Colors [rarity rank] {EMOJI_ARROW_DOWN}", value=top_colors_str, inline=False)
 
