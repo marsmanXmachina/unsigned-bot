@@ -298,6 +298,21 @@ def embed_rarity():
 
     return embed
 
+def embed_v2():
+    title = f"{EMOJI_CROWN} WEN V2??? {EMOJI_CROWN}"
+    description="Patience you must have..."
+    color=discord.Colour.dark_magenta()  
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    quote_str = "WHEN ANNOUNCEMENTS?\nHOW WILL US HOLDERS BENEFIT?\nWHAT IS THE UTILITY?..."
+    embed.add_field(name=f"Questions from 'The King'", value=quote_str, inline=False)
+
+    v2_tweet_url = "https://twitter.com/unsigned_algo/status/1445343171496398853?s=21"
+    answer_str = f"[What v2 is about?]({v2_tweet_url})"
+    embed.add_field(name=f"Answer from 'The Great", value=answer_str, inline=False)
+
+    return embed
 
 def embed_policy():
     title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
@@ -749,6 +764,10 @@ def embed_color_ranking():
                 create_choice(
                     name="About rarity",
                     value="rarity"
+                ),
+                create_choice(
+                    name="WEN V2?",
+                    value="v2"
                 )
             ]
         )
@@ -770,6 +789,9 @@ async def faq(ctx: SlashContext, topics: str):
 
         if topics == "rarity":
             embed = embed_rarity()
+
+        if topics == "v2":
+            embed = embed_v2()
         
         await ctx.send(embed=embed)
 
