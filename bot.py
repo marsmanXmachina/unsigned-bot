@@ -1912,7 +1912,7 @@ async def post_sales(sales):
             message = await channel.send(embed=embed)
             await message.publish()
 
-async def post_certs(new_certs, num_certificates):
+async def post_certs(new_certs: dict, num_certificates):
     try:
         channel = bot.get_channel(SALES_CHANNEL_ID)
     except:
@@ -1986,7 +1986,6 @@ async def fetch_data():
 
     try:
         certificates = load_json("json/certificates.json")
-        num_certificates = len(certificates.keys())
 
         new_certificates = get_new_certificates(certificates)
         print(len(new_certificates), "new certificates found")
@@ -1995,9 +1994,13 @@ async def fetch_data():
             bot.certs.update(new_certificates)
             save_json("json/certificates.json", bot.certs)
 
-            # if bot.guild.name == "unsigned_algorithms":
-            #     await asyncio.sleep(2)
-            #     await post_certs(new_certificates, num_certificates)
+            if bot.guild.name == "unsigned_algorithms":
+                num_certificates = len(bot.certs.keys())
+
+                new_certificates = filter_certs_by_time_interval(new_certificates, INVERVAL_LOOP * 1000 * 2)
+                
+                await asyncio.sleep(2)
+                await post_certs(new_certificates, num_certificates)
             
         bot.certs_updated = datetime.utcnow()
     except:

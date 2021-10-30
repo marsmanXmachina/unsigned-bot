@@ -187,6 +187,7 @@ def get_request(url, headers=None, params=None):
     else:
         return response
 
+# Blockfrost API Calls
 def get_asset_ids(policy_id: str) -> list:
     url = f"{BLOCKFROST_API_URL}/assets/policy/{policy_id}"
 
@@ -205,6 +206,33 @@ def get_asset_data(asset_id: str) -> dict:
     response = get_request(url, headers=BLOCKFROST_API_HEADERS)
     if response:
         return response
+
+def get_tx_data(tx_id):
+    url = f"{BLOCKFROST_API_URL}/txs/{tx_id}"
+
+    response = get_request(url, headers=BLOCKFROST_API_HEADERS)
+    if response:
+        return response
+
+def get_block_data(block_id):
+    url = f"{BLOCKFROST_API_URL}/blocks/{block_id}"
+
+    response = get_request(url, headers=BLOCKFROST_API_HEADERS)
+    if response:
+        return response
+
+def get_tx_timestamp(tx_id):
+    """Return timestamp of tx [in ms]"""
+    try:
+        tx_data = get_tx_data(tx_id)
+        block_id = tx_data.get("block")
+        block_data = get_block_data(block_id)
+        timestamp = block_data.get("time")
+    except:
+        return 0
+    else:
+        return timestamp * 1000
+
 
 async def get_ipfs_url_from_file(asset_name):
     ipfs_urls = load_json("json/ipfs_urls.json")
@@ -319,8 +347,16 @@ def get_new_certificates(certificates: dict) -> dict:
     new_certs = dict()
     for cert_id in list(new_certs_ids):
         cert_data = get_asset_data(cert_id)
+        tx_id = cert_data.get('initial_mint_tx_hash')
+        cert_data["date"] = get_tx_timestamp(tx_id)
         new_certs[cert_id] = cert_data
 
     return new_certs
 
+if __name__ == "__main__":
+    from utility.files_util import save_json
 
+    certs = dict()
+    new_certs = get_new_certificates(certs)
+
+    save_json("json/certs.json", new_certs)

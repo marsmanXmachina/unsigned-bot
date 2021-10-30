@@ -84,6 +84,9 @@ def filter_by_time_interval(assets: list, interval_ms) -> list:
 
     return filtered
 
+def filter_certs_by_time_interval(assets: dict, interval_ms) -> dict:
+    return {k: v for k,v in assets.items() if v.get("date") >= ((round(time.time() * 1000) - interval_ms))}
+
 def filter_sales_by_asset(sales, asset_name):
     return [sale for sale in sales if sale.get("assetid").replace("_","") == asset_name]
 
@@ -148,3 +151,4 @@ def parse_sale(sale_data: dict) -> tuple:
         date = None
     
     return (marketplace_name, num_props, price, date)
+
