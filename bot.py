@@ -310,7 +310,7 @@ def embed_v2():
 
     v2_tweet_url = "https://twitter.com/unsigned_algo/status/1445343171496398853?s=21"
     answer_str = f"[What v2 is about?]({v2_tweet_url})"
-    embed.add_field(name=f"Answer from 'The Great", value=answer_str, inline=False)
+    embed.add_field(name=f"Answer from 'The Great'", value=answer_str, inline=False)
 
     return embed
 
@@ -596,7 +596,7 @@ def embed_certificate(number, data: dict, num_certificates: int, feed=False):
 
         ipfs_hash = metadata.get("image").rsplit("/",1)[-1]
         image_link = f"{BLOCKFROST_IPFS_URL}/{ipfs_hash}"
-        print(image_link)
+
 
         title = f"{EMOJI_CERT} Cert for unsig{number.zfill(5)} {EMOJI_CERT}"
         if feed:
@@ -1995,9 +1995,9 @@ async def fetch_data():
             bot.certs.update(new_certificates)
             save_json("json/certificates.json", bot.certs)
 
-            if bot.guild.name == "unsigned_algorithms":
-                await asyncio.sleep(2)
-                await post_certs(new_certificates, num_certificates)
+            # if bot.guild.name == "unsigned_algorithms":
+            #     await asyncio.sleep(2)
+            #     await post_certs(new_certificates, num_certificates)
             
         bot.certs_updated = datetime.utcnow()
     except:
