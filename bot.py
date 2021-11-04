@@ -172,7 +172,7 @@ async def embed_metadata(metadata):
         if len(str(value_str)) >= 1024:
             value_str = f"Data too long to display!"
             if metadata_url:
-                value_str += f"\nClick [here]({metadata_url}) to see complete metadata."
+                value_str += f"\nClick **[here]({metadata_url})** to see complete metadata."
         else:
             value_str = f"`{value_str}`"
 
@@ -347,6 +347,28 @@ def embed_v2():
     v2_tweet_url = "https://twitter.com/unsigned_algo/status/1445343171496398853?s=21"
     answer_str = f"[What v2 is about?]({v2_tweet_url})"
     embed.add_field(name=f"Answer from 'The Great'", value=answer_str, inline=False)
+
+    return embed
+
+def embed_gen_unsig():
+    title = f"{EMOJI_PAINTBRUSH} Generate your unsig {EMOJI_PAINTBRUSH}"
+    description="In the footsteps of Sol LeWitt..."
+    color=discord.Colour.magenta()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    video_url = "https://www.youtube.com/watch?v=lvTAjcLaQjU"
+    embed.add_field(name="Wanna generate your unsig from onchain data?", value=f"{EMOJI_ARROW_RIGHT} Follow the instructions in [this video]({video_url}).\n", inline=False)
+
+    ingredients_str = ""
+    ingredients = ["metadata of unsig00000", "metadata of your unsig", "python environment / jupyter notebook"]
+
+    for ingredient in ingredients:
+        ingredients_str += f" {EMOJI_ARROW_RIGHT} {ingredient} \n"
+
+    embed.add_field(name=f"{EMOJI_PALETTE} Ingredients {EMOJI_PALETTE}", value=ingredients_str, inline=False)
+
+    embed.add_field(name=f"{EMOJI_BULB} Bot Tip", value="Use my `/metadata` command to get the data you need", inline=False)
 
     return embed
 
@@ -804,6 +826,10 @@ def embed_color_ranking():
                 create_choice(
                     name="WEN V2?",
                     value="v2"
+                ),
+                create_choice(
+                    name="Generate unsig",
+                    value="gen_unsig"
                 )
             ]
         )
@@ -828,6 +854,9 @@ async def faq(ctx: SlashContext, topics: str):
 
         if topics == "v2":
             embed = embed_v2()
+
+        if topics == "gen_unsig":
+            embed = embed_gen_unsig()
         
         await ctx.send(embed=embed)
 
