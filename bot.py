@@ -29,7 +29,7 @@ from utility.price_util import get_min_prices, get_average_price
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
 from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
 
-from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id
+from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id, get_wallet_balance
 
 from parsing import *
 
@@ -39,7 +39,7 @@ from twitter import tweet_sales, create_twitter_api
 
 from deconstruct import SUBPATTERN_NAMES, get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
 
-from my_constants import MAX_AMOUNT
+from my_constants import MAX_AMOUNT, TREASURY_ADDRESS
 from emojis import *
 from urls import *
 
@@ -366,9 +366,26 @@ def embed_gen_unsig():
     for ingredient in ingredients:
         ingredients_str += f" {EMOJI_ARROW_RIGHT} {ingredient} \n"
 
-    embed.add_field(name=f"{EMOJI_PALETTE} Ingredients {EMOJI_PALETTE}", value=ingredients_str, inline=False)
+    embed.add_field(name=f"What do you need?", value=ingredients_str, inline=False)
 
     embed.add_field(name=f"{EMOJI_BULB} Bot Tip", value="Use my `/metadata` command to get the data you need", inline=False)
+
+    return embed
+
+def embed_treasury():
+    title = f"{EMOJI_MONEYBAG} Treasury {EMOJI_MONEYBAG}"
+    description="administered by the unsigned_DAO"
+    color=discord.Colour.orange()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    pool_link = f"{POOL_PM_URL}/{TREASURY_ADDRESS}"
+    cardanoscan_link = f"{CARDANOSCAN_URL}/address/{TREASURY_ADDRESS}"
+    wallet_str = f"view on [pool.pm]({pool_link})\nview on [cardanoscan.io]({cardanoscan_link})"
+    embed.add_field(name=f"Wallet", value=wallet_str, inline=False)
+
+    balance = get_wallet_balance(TREASURY_ADDRESS)
+    embed.add_field(name=f"Current Balance", value=f"`₳{balance/1000000:,.0f}`", inline=False)
 
     return embed
 
@@ -830,6 +847,10 @@ def embed_color_ranking():
                 create_choice(
                     name="Generate unsig",
                     value="gen_unsig"
+                ),
+                create_choice(
+                    name="Treasury unsigned_DAO",
+                    value="treasury"
                 )
             ]
         )
@@ -857,6 +878,9 @@ async def faq(ctx: SlashContext, topics: str):
 
         if topics == "gen_unsig":
             embed = embed_gen_unsig()
+
+        if topics == "treasury":
+            embed = embed_treasury()
         
         await ctx.send(embed=embed)
 
@@ -1259,7 +1283,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
             else:
                 price_str = f"₳{price:,.0f}"
 
-        embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=price_str, inline=True)
+        embed.add_field(name=f"{EMOJI_MONEYBAG} Price", value=price_str, inline=True)
 
         embed_minting_order(embed, minting_data)
 
@@ -2003,7 +2027,7 @@ async def post_sales(sales):
 
             embed = discord.Embed(title=title, description=description, color=color)
 
-            embed.add_field(name=f"{EMOJI_MONEYBACK} Price", value=f"₳{price:,.0f}", inline=True)
+            embed.add_field(name=f"{EMOJI_MONEYBAG} Price", value=f"₳{price:,.0f}", inline=True)
             embed.add_field(name=f"{EMOJI_CALENDAR} Sold on", value=date, inline=True)
 
             image_url = await get_ipfs_url_from_file(asset_name)

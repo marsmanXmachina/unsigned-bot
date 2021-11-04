@@ -350,6 +350,15 @@ def get_current_owner_address(token_id: str) -> str:
     finally:
         return address
 
+def get_wallet_balance(address):
+    url = f"{POOL_PM_URL}/wallet/{address}"
+    response = get_request(url, headers=None)
+    if response:
+        lovelaces = response.get("lovelaces", 0)
+        reward = response.get("reward", 0)
+
+        return lovelaces + reward
+
 def get_new_certificates(certificates: dict) -> dict:
     asset_ids = get_asset_ids(ASSESSMENTS_POLICY_ID)
 
@@ -363,3 +372,4 @@ def get_new_certificates(certificates: dict) -> dict:
         new_certs[cert_id] = cert_data
 
     return new_certs
+
