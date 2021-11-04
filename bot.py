@@ -29,7 +29,7 @@ from utility.price_util import get_min_prices, get_average_price
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
 from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
 
-from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name
+from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id
 
 from parsing import *
 
@@ -146,22 +146,37 @@ def embed_props(embed, unsigs_data):
     rotations_str = ", ".join([str(r) for r in rotations])
     embed.add_field(name=f"{EMOJI_CIRCLE_ARROWS} Rotations {EMOJI_CIRCLE_ARROWS}", value=f"`{rotations_str}`", inline=False)
 
-def embed_metadata(metadata):
+async def embed_metadata(metadata):
     asset_name = metadata.get("title").replace("_", "")
 
-    title = f"{EMOJI_FILE} metadata {asset_name} {EMOJI_FILE}"
+    try:
+        asset_id = get_asset_id(asset_name)
+        tx_id = await get_minting_tx_id(asset_id)
+    except:
+        metadata_url = None
+    else:
+        metadata_url = f"{CARDANOSCAN_URL}/transaction/{tx_id}/?tab=metadata"
+
+    title = f"{EMOJI_FILE}  metadata {asset_name}  {EMOJI_FILE}"
     description="Show metadata of your unsig"
     color=discord.Colour.dark_blue()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = discord.Embed(title=title, description=description, color=color, url=metadata_url)
 
     for k, v in metadata.items():
         if isinstance(v, dict):
             value_str = pprint.pformat(v)
         else:   
             value_str = v
+        
+        if len(str(value_str)) >= 1024:
+            value_str = f"Data too long to display!"
+            if metadata_url:
+                value_str += f"\nClick [here]({metadata_url}) to see complete metadata."
+        else:
+            value_str = f"`{value_str}`"
 
-        embed.add_field(name=f"**'{k}:'**", value=f"`{value_str}`", inline=False)
+        embed.add_field(name=f"**'{k}'**", value=f"{value_str}", inline=False)
 
     return embed
 
@@ -1370,7 +1385,7 @@ async def unsig(ctx: SlashContext, number: str):
         metadata = get_metadata_from_asset_name(asset_name)
 
         if metadata:
-            embed = embed_metadata(metadata)
+            embed = await embed_metadata(metadata)
             embed.set_footer(text=f"\nData comes from {POOL_PM_URL}")
 
             await ctx.send(embed=embed)

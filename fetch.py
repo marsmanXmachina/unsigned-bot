@@ -3,6 +3,8 @@ import os
 import json
 import copy
 
+from pprint import pprint
+
 import asyncio
 
 import requests
@@ -298,6 +300,8 @@ def get_ipfs_hash(metadata, asset_name):
         if image_url:   
             return image_url.rsplit("/")[-1]
 
+
+
 def get_metadata_from_asset_name(asset_name):
     url = f"{POOL_PM_URL}/asset/{POLICY_ID}.{asset_name}"
     response = get_request(url, headers=None)
@@ -359,4 +363,3 @@ def get_new_certificates(certificates: dict) -> dict:
         new_certs[cert_id] = cert_data
 
     return new_certs
-
