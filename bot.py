@@ -4,6 +4,8 @@ import random
 import re
 import json
 
+import pprint
+
 import numpy as np
 
 from datetime import datetime
@@ -27,7 +29,7 @@ from utility.price_util import get_min_prices, get_average_price
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
 from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
 
-from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data
+from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name
 
 from parsing import *
 
@@ -143,6 +145,25 @@ def embed_props(embed, unsigs_data):
 
     rotations_str = ", ".join([str(r) for r in rotations])
     embed.add_field(name=f"{EMOJI_CIRCLE_ARROWS} Rotations {EMOJI_CIRCLE_ARROWS}", value=f"`{rotations_str}`", inline=False)
+
+def embed_metadata(metadata):
+    asset_name = metadata.get("title").replace("_", "")
+
+    title = f"{EMOJI_FILE} metadata {asset_name} {EMOJI_FILE}"
+    description="Show metadata of your unsig"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    for k, v in metadata.items():
+        if isinstance(v, dict):
+            value_str = pprint.pformat(v)
+        else:   
+            value_str = v
+
+        embed.add_field(name=f"**'{k}:'**", value=f"`{value_str}`", inline=False)
+
+    return embed
 
 def embed_subpattern(embed, number:str):
     try:
@@ -841,6 +862,7 @@ async def help(ctx: SlashContext):
 
     embed.add_field(name="/faq", value="show important information", inline=False)
     embed.add_field(name="/unsig + `integer`", value="show data of unsig with given number", inline=False)
+    embed.add_field(name="/metadata + `integer`", value="show metadata of your unsig", inline=False)
     embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
     embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
     embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
@@ -1317,6 +1339,44 @@ async def colors(ctx: SlashContext, number: str):
         else:
             await ctx.send(file=image_file, embed=embed)
 
+
+@slash.slash(
+    name="metadata", 
+    description="show metadata of your unsig", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="number",
+            description="Number of your unsig",
+            required=True,
+            option_type=3,
+        )
+    ]
+)
+async def unsig(ctx: SlashContext, number: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+
+    asset_name = get_asset_name_from_idx(number)
+
+    if not unsig_exists(number):
+        await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+    else:
+
+        number = str(int(number))
+
+        metadata = get_metadata_from_asset_name(asset_name)
+
+        if metadata:
+            embed = embed_metadata(metadata)
+            embed.set_footer(text=f"\nData comes from {POOL_PM_URL}")
+
+            await ctx.send(embed=embed)
+            return
+        else:
+            await ctx.send(content=f"I can't find the metadata of your unsig!")
 
 @slash.slash(
     name="unsig", 

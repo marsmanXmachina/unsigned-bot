@@ -14,6 +14,8 @@ from utility.files_util import load_json
 
 from parsing import get_idx_from_asset_name
 
+from urls import POOL_PM_URL
+
 from dotenv import load_dotenv
 load_dotenv() 
 
@@ -296,6 +298,11 @@ def get_ipfs_hash(metadata, asset_name):
         if image_url:   
             return image_url.rsplit("/")[-1]
 
+def get_metadata_from_asset_name(asset_name):
+    url = f"{POOL_PM_URL}/asset/{POLICY_ID}.{asset_name}"
+    response = get_request(url, headers=None)
+    return response.get("metadata")
+
 def get_unsigs_data(idx:str):
     unsigs_data = load_json("json/unsigs.json")
     return unsigs_data.get(idx, None)
@@ -353,10 +360,3 @@ def get_new_certificates(certificates: dict) -> dict:
 
     return new_certs
 
-if __name__ == "__main__":
-    from utility.files_util import save_json
-
-    certs = dict()
-    new_certs = get_new_certificates(certs)
-
-    save_json("json/certs.json", new_certs)
