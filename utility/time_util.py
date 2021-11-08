@@ -1,6 +1,9 @@
 import time
 from datetime import datetime
 
+from dateutil import parser
+
+
 INVERVALS_IN_DAYS = {
     "day": 1,
     "week": 7,
@@ -18,3 +21,8 @@ def get_interval_from_period(period:str) -> int:
         return interval * 24 * 3600 * 1000
     else:
         return 0
+
+def datetime_to_timestamp(datetime_str:str) -> int:
+    """Return timestamp in milliseconds"""
+    date = parser.parse(datetime_str)
+    return int(datetime.timestamp(date) * 1000)

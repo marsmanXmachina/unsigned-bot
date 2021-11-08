@@ -3,7 +3,10 @@ import os
 import json
 import copy
 
-from pprint import pprint
+
+
+from utility.time_util import datetime_to_timestamp
+from utility.files_util import save_json
 
 import asyncio
 
@@ -16,7 +19,7 @@ from utility.files_util import load_json
 
 from parsing import get_idx_from_asset_name
 
-from urls import POOL_PM_URL
+from urls import POOL_PM_URL, CNFT_API_URL
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -50,21 +53,21 @@ def get_items_found(url, payload: dict):
         return items_found
 
 
-def get_payloads(url, payload: dict):
+def get_payloads(pages: list, payload: dict):
     payloads = list()
 
-    items_found = get_items_found(url, payload)
-    if items_found:
-        items_per_page = payload.get("count")
-        pages = (items_found // items_per_page) + 1
+    # items_found = get_items_found(url, payload)
+    # if items_found:
+    #     items_per_page = payload.get("count")
+    #     pages = (items_found // items_per_page) + 1
 
-        for idx in range(pages):
-            page = idx + 1
-            new_payload = copy.deepcopy(payload)
-            new_payload["page"] = page
-            payloads.append(new_payload)
-        
-        return payloads
+    for idx in pages:
+        page = idx + 1
+        new_payload = copy.deepcopy(payload)
+        new_payload["page"] = page
+        payloads.append(new_payload)
+    
+    return payloads
 
 def get_tasks_for_pagination(session, url, payloads: list):
     tasks = list()
@@ -83,8 +86,8 @@ async def fetch(session, url, payload: dict):
         else:
             return resp
 
-async def fetch_all(url, payload: dict):
-    payloads = get_payloads(url, payload)
+async def fetch_all(url, payload: dict, pages):
+    payloads = get_payloads(pages, payload)
     if payloads:
         async with aiohttp.ClientSession() as session:
             tasks = get_tasks_for_pagination(session, url, payloads)
@@ -92,58 +95,76 @@ async def fetch_all(url, payload: dict):
 
             return responses
 
-async def fetch_data_from_marketplace(url, policy_id: str, sold=False) -> list:
+async def fetch_data_from_marketplace(url, project_name: str, sold=False) -> list:
     
     payload = {
-        "search": policy_id,
-        "sort": "date",
-        "order": "desc",
+        "project": project_name,
         "page": 1,
-        "verified": "true",
-        "count": 200
+        "verified": True,
+        "sold": sold
     }
 
     if sold:
-        payload["sold"] = "true"
-
-
-    try:
-        responses = await fetch_all(url, payload)
-    except:
-        print("Fetching data failed!")
-        return
+        payload["types"] = [] 
     else:
-        if responses:
-            assets = get_data_from_responses(responses)
-            if assets:
+        payload["types"] = [
+            "auction",
+            "listing",
+            "offer"
+        ]
+    
+    BURST_SIZE = 25
+    
+    assets_total = list()
 
-                assets_parsed = parse_data(assets, sold)
+    fetching = True
+    num_requests = 1
+    while fetching:
+        pages = range((num_requests-1) * BURST_SIZE, num_requests*BURST_SIZE)
+    
+        try:
+            responses = await fetch_all(url, payload, pages)
+        except:
+            print("Fetching data failed!")
+            return
+        else:
+            if responses:
+                assets = get_data_from_responses(responses)
+                if assets:
 
-                assets_extended = add_num_props(assets_parsed)
+                    assets_parsed = parse_data(assets, sold)
+                    assets_extended = add_num_props(assets_parsed)
+                    assets_total.extend(assets_extended)
+                else:
+                    fetching = False
 
-                return assets_extended
+        num_requests += 1
+    
+    print(f"Total {len(assets_total)} assets found!")
+
+    return assets_total
 
 
 def get_data_from_responses(responses) -> list:
-    num_assets_found = 0
+    # num_assets_found = 0
 
     assets = list()
 
     for response in responses:
         if response:
-            if not num_assets_found:
-                num_assets_found = response.get("found", 0)
+            # if not num_assets_found:
+            #     num_assets_found = response.get("found", 0)
 
-            assets_found = response.get("assets", None)
+            assets_found = response.get("results", None)
             if assets_found:
                 assets.extend(assets_found)
     
-    if num_assets_found > len(assets):
-        print("not all assets requested")
-        print(num_assets_found, len(assets))
-        return
+    # if num_assets_found > len(assets):
+    #     print("not all assets requested")
+    #     print(num_assets_found, len(assets))
+    #     return
     
-    print(f"{len(assets)} assets found!")
+    # print(f"{len(assets)} assets found!")
     return assets
 
 def parse_data(assets: list, sold=False) -> list:
@@ -153,21 +174,24 @@ def parse_data(assets: list, sold=False) -> list:
     for asset in assets:
         asset_parsed = dict()
 
-        name = asset.get("metadata").get("name")
-        asset_parsed["assetid"] = name.replace("_", "")
-        asset_parsed["unit"] = asset.get("unit")
+        asset_data = asset.get("asset")
+        asset_parsed["assetid"] = asset_data.get("assetId")
         asset_parsed["price"] = asset.get("price")
-        asset_parsed["sold"] = asset.get("sold")
-        asset_parsed["id"] = asset.get("id")
+        asset_parsed["id"] = asset.get("_id")
 
         if sold:
-            asset_parsed["date"] = asset.get("dateSold")
+            datetime_str = asset.get("soldAt")
+            asset_parsed["sold"] = True
         else:
-            asset_parsed["date"] = asset.get("dateListed")
-            payment_session = asset.get("paymentSession")
-            asset_parsed["reserved"] = True if payment_session else False
+            datetime_str = asset.get("createdAt")
+            asset_parsed["sold"] = False
 
-        parsed.append(asset_parsed)
+        if not datetime_str:
+            datetime_str = asset.get("updatedAt")
+
+        if datetime_str:
+            asset_parsed["date"] = datetime_to_timestamp(datetime_str)
+            parsed.append(asset_parsed)
     
     return parsed
 
@@ -356,8 +380,9 @@ def get_wallet_balance(address):
     if response:
         lovelaces = response.get("lovelaces", 0)
         reward = response.get("reward", 0)
+        withdrawal = response.get("withdrawal", 0)
 
-        return lovelaces + reward
+        return lovelaces + reward - withdrawal
 
 def get_new_certificates(certificates: dict) -> dict:
     asset_ids = get_asset_ids(ASSESSMENTS_POLICY_ID)
@@ -373,3 +398,5 @@ def get_new_certificates(certificates: dict) -> dict:
 
     return new_certs
 
+
+    

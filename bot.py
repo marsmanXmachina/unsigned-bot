@@ -2083,34 +2083,42 @@ async def publish_last_messages():
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
 
-    sales_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=True)
-    if sales_data:
-        new_sales = filter_new_sales(bot.sales, sales_data)
-        bot.sales_updated = datetime.utcnow()
-        print("sales updated", bot.sales_updated)
+    try:
+        sales_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=True)
+    except:
+        print("Parsing sales data failed!")
+    else:
+        if sales_data:
+            new_sales = filter_new_sales(bot.sales, sales_data)
+            bot.sales_updated = datetime.utcnow()
+            print("sales updated", bot.sales_updated)
 
-        if new_sales:
-            bot.sales.extend(new_sales)
-            save_json("json/sales.json", bot.sales)
+            if new_sales:
+                bot.sales.extend(new_sales)
+                save_json("json/sales.json", bot.sales)
+        
+                new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 2)
+
+                if bot.guild.name == "unsigned_algorithms":
+                    await asyncio.sleep(2)
+                    await post_sales(new_sales)
+
+                    if not bot.twitter_api:
+                        bot.twitter_api = create_twitter_api()
+
+                    try:
+                        await tweet_sales(bot.twitter_api, new_sales)
+                    except:
+                        print("Tweeting sales FAILED!")
     
-            new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 2)
-
-            if bot.guild.name == "unsigned_algorithms":
-                await asyncio.sleep(2)
-                await post_sales(new_sales)
-
-                if not bot.twitter_api:
-                    bot.twitter_api = create_twitter_api()
-
-                try:
-                    await tweet_sales(bot.twitter_api, new_sales)
-                except:
-                    print("Tweeting sales FAILED!")
-    
-    offers_data = await fetch_data_from_marketplace(CNFT_API_URL, POLICY_ID, sold=False)
-    if offers_data:
-        bot.offers = offers_data
-        bot.offers_updated = datetime.utcnow()
+    try:
+        offers_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=False)
+    except:
+        print("Parsing listing data failed!")
+    else:
+        if offers_data:
+            bot.offers = offers_data
+            bot.offers_updated = datetime.utcnow()
 
     try:
         certificates = load_json("json/certificates.json")

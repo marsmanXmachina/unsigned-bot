@@ -106,7 +106,7 @@ def get_unsig_url(number: str):
 
 def get_url_from_marketplace_id(marketplace_id: str, marketplace="cnft") -> str:
     if marketplace == "cnft":
-        return f"https://cnft.io/token.php?id={marketplace_id}"
+        return f"https://cnft.io/token/{marketplace_id}"
     if marketplace == "tokhun":
         return f"https://tokhun.io/marketplace/{marketplace_id}"
 
