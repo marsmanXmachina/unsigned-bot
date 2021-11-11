@@ -30,8 +30,8 @@ from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches,
 from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
 
 from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id, get_wallet_balance
-
 from parsing import *
+from aggregate import aggregate_data_from_marketplaces
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
 
@@ -204,11 +204,11 @@ def embed_subpattern(embed, number:str):
 
 def add_disclaimer(embed, last_update):
     last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
-    embed.set_footer(text=f"The server has no affiliation with the marketplace nor listed prices.\n\nData comes from https://cnft.io\nLast update: {last_update}")
+    embed.set_footer(text=f"The server has no affiliation with the marketplace nor listed prices.\n\nData comes from \n - {CNFT_URL}\n - {TOKHUN_URL}\nLast update: {last_update}")
 
 def add_data_source(embed, last_update):
     last_update = last_update.strftime("%Y-%m-%d %H:%M:%S UTC")
-    embed.set_footer(text=f"Data comes from https://cnft.io\nLast update: {last_update}")
+    embed.set_footer(text=f"Data comes from\n - {CNFT_URL}\n - {TOKHUN_URL}\nLast update: {last_update}")
 
 def add_policy(embed):
     embed.add_field(name = f"{EMOJI_WARNING} Watch out for fake items and always check the policy id {EMOJI_WARNING}", value=f"`{POLICY_ID}`", inline=False)
@@ -421,7 +421,8 @@ def embed_offers(assets_ordered: dict):
                 asset_name = asset.get("assetid")
                 number = asset_name.replace("unsig", "")
                 marketplace_id = asset.get("id")
-                offers_str += f" [#{number.zfill(5)}]({get_url_from_marketplace_id(marketplace_id)}) "
+                marketplace = asset.get("marketplace")
+                offers_str += f" [#{number.zfill(5)}]({get_url_from_marketplace_id(marketplace_id, marketplace)}) "
             
             offers_str += f"for **₳{min_price:,.0f}** (out of {num_assets})\n"
         else:
@@ -506,7 +507,8 @@ def embed_matches(number, matches, best_matches, offers):
             for match in matches_side:
                 offer = get_asset_from_number(match, offers)
                 offer_id = offer.get("id")
-                marketplace_url = get_url_from_marketplace_id(offer_id)
+                marketplace = offer.get("marketplace")
+                marketplace_url = get_url_from_marketplace_id(offer_id, marketplace)
                 match_str=f" [#{str(match).zfill(5)}]({marketplace_url}) "
                 matches_str += match_str
         else:
@@ -525,7 +527,8 @@ def embed_matches(number, matches, best_matches, offers):
         if best_match:
             offer = get_asset_from_number(best_match, offers)
             offer_id = offer.get("id")
-            marketplace_url = get_url_from_marketplace_id(offer_id)
+            marketplace = offer.get("marketplace")
+            marketplace_url = get_url_from_marketplace_id(offer_id, marketplace)
             best_match_str=f"[#{str(best_match).zfill(5)}]({marketplace_url})"
         else:
             best_match_str = "` - `"
@@ -602,7 +605,8 @@ def embed_siblings(number, siblings, selected, offers, cols=2):
                 offer = get_asset_from_number(num, offers)
                 price = offer.get("price")/1000000
                 marketplace_id = offer.get("id")
-                siblings_str = link_asset_to_marketplace(num, marketplace_id)
+                marketplace = offer.get("marketplace")
+                siblings_str = link_asset_to_marketplace(num, marketplace_id, marketplace)
                 offers_str += f"{siblings_str} for **₳{price:,.0f}**\n"
         else:
             offers_str = "` - `"
@@ -2035,7 +2039,7 @@ async def post_sales(sales):
             if image_url:
                 embed.set_image(url=image_url)
 
-            embed.set_footer(text=f"Data comes from {CNFT_URL}")
+            embed.set_footer(text=f"Data comes from \n - {CNFT_URL}\n - {TOKHUN_URL}")
             
             message = await channel.send(embed=embed)
             await message.publish()
@@ -2084,7 +2088,8 @@ async def publish_last_messages():
 async def fetch_data():
 
     try:
-        sales_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=True)
+        # sales_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=True)
+        sales_data = await aggregate_data_from_marketplaces(sold=True)
     except:
         print("Parsing sales data failed!")
     else:
@@ -2112,7 +2117,8 @@ async def fetch_data():
                         print("Tweeting sales FAILED!")
     
     try:
-        offers_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=False)
+        # offers_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=False)
+        offers_data = await aggregate_data_from_marketplaces(sold=False)
     except:
         print("Parsing listing data failed!")
     else:

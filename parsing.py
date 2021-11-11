@@ -110,8 +110,8 @@ def get_url_from_marketplace_id(marketplace_id: str, marketplace="cnft") -> str:
     if marketplace == "tokhun":
         return f"https://tokhun.io/marketplace/{marketplace_id}"
 
-def link_asset_to_marketplace(number: str, marketplace_id: str):
-    url = get_url_from_marketplace_id(marketplace_id)
+def link_asset_to_marketplace(number: str, marketplace_id: str, marketplace: str) -> str:
+    url = get_url_from_marketplace_id(marketplace_id, marketplace)
     return f" [#{str(number).zfill(5)}]({url}) "
 
 def link_assets_to_gallery(numbers, cols):

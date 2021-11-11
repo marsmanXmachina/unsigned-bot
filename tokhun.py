@@ -71,16 +71,19 @@ def parse_data(assets, sold=False):
         asset_parsed["unit"] = asset.get("asset_id")
         price = asset.get("price_in_ada")*1000000 # convert price to lovelace
         asset_parsed["price"] = int(price)
-        asset_parsed["sold"] = True if asset.get("sale_status") == "Sold" else False
         asset_parsed["id"] = asset.get("sale_id")
         asset_parsed['marketplace'] = MARKETPLACE
-
+        asset_parsed["sold"] = True if asset.get("sale_status") == "Sold" else False
+        
         if sold:
             asset_parsed["date"] = asset.get("sold_at_utc")*1000 # convert timestamp to ms
         else:
             asset_parsed["date"] = asset.get("sale_listed_at_utc")*1000 # convert timestamp to ms
         
-        parsed.append(asset_parsed)
+        # exclude bundles
+        bundle = asset.get("bundle")
+        if not bundle:
+            parsed.append(asset_parsed)
 
     return parsed
 

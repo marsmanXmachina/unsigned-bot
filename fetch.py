@@ -3,8 +3,6 @@ import os
 import json
 import copy
 
-
-
 from utility.time_util import datetime_to_timestamp
 from utility.files_util import save_json
 

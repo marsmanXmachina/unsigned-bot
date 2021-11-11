@@ -7,7 +7,7 @@ from PIL import Image, ImageOps, ImageDraw
 from utility.files_util import load_json
 from deconstruct import order_by_color, get_prop_layers
 
-from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, calc_pixel_percentages, get_max_percentage
+from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, calc_pixel_percentages, get_max_percentage, get_color_frequencies
 
 BORDER = 10
 

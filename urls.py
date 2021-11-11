@@ -9,14 +9,14 @@ POOL_PM_URL= "https://pool.pm"
 CNFT_URL = "https://cnft.io"
 CNFT_API_URL = "https://api.cnft.io/market/listings"
 
-TOKHUN_URL = "https://tokhun.io/marketplace"
+TOKHUN_URL = "https://tokhun.io"
 TOKHUN_API_URL = "https://tokhun.io/api/v1/marketplace"
 
 UNSIGS_URL = "https://www.unsigs.com"
 
 
 MARKETPLACES = {
-    "CNFT.IO": "https://cnft.io/marketplace.php?s=0e14267a8020229adc0184dd25fa3174c3f7d6caadcb4425c70e7c04",
+    "CNFT.IO": "https://cnft.io/marketplace?project=unsigned_algorithms",
     "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1"
 }
 
