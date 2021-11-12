@@ -2025,6 +2025,8 @@ async def post_sales(sales):
             timestamp_ms = sale_data.get("date")
             date = datetime.utcfromtimestamp(timestamp_ms/1000).strftime("%Y-%m-%d %H:%M:%S UTC")
 
+            marketplace = sale_data.get("marketplace")
+
             title = f"{EMOJI_CART} {asset_name} {EMOJI_CART}"
             description="minted by unsigned_algorithms"
             color=discord.Colour.dark_blue()
@@ -2033,6 +2035,7 @@ async def post_sales(sales):
 
             embed.add_field(name=f"{EMOJI_MONEYBAG} Price", value=f"₳{price:,.0f}", inline=True)
             embed.add_field(name=f"{EMOJI_CALENDAR} Sold on", value=date, inline=True)
+            embed.add_field(name=f"{EMOJI_PIN} Marketplace", value=f"`{marketplace.upper()}`", inline=False)
 
             image_url = await get_ipfs_url_from_file(asset_name)
 
@@ -2088,7 +2091,6 @@ async def publish_last_messages():
 async def fetch_data():
 
     try:
-        # sales_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=True)
         sales_data = await aggregate_data_from_marketplaces(sold=True)
     except:
         print("Parsing sales data failed!")
@@ -2117,7 +2119,6 @@ async def fetch_data():
                         print("Tweeting sales FAILED!")
     
     try:
-        # offers_data = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold=False)
         offers_data = await aggregate_data_from_marketplaces(sold=False)
     except:
         print("Parsing listing data failed!")
