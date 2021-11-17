@@ -133,6 +133,8 @@ def parse_data(assets: list, sold=False) -> list:
             datetime_str = asset.get("createdAt")
             asset_parsed["sold"] = False
 
+            asset_parsed["type"] = asset.get("type")
+
         if not datetime_str:
             datetime_str = asset.get("updatedAt")
 

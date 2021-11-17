@@ -79,6 +79,8 @@ def parse_data(assets, sold=False):
             asset_parsed["date"] = asset.get("sold_at_utc")*1000 # convert timestamp to ms
         else:
             asset_parsed["date"] = asset.get("sale_listed_at_utc")*1000 # convert timestamp to ms
+
+            asset_parsed["type"] = asset.get("sale_type")
         
         # exclude bundles
         bundle = asset.get("bundle")

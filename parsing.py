@@ -96,10 +96,8 @@ def sort_sales_by_date(sales, descending=False):
 def filter_new_sales(past_sales, new_sales):
     return [sale for sale in new_sales if sale not in past_sales]
 
-def filter_available_assets(assets):
-    return [asset for asset in assets if not asset.get("reserved")]
-
-
+def filter_assets_by_type(assets: list, *types) -> list:
+    return [asset for asset in assets if asset.get("type") in types]
 
 def get_unsig_url(number: str):
     return f"{UNSIGS_URL}/details/{str(number).zfill(5)}"

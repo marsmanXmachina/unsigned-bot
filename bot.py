@@ -401,7 +401,7 @@ def embed_policy():
 
 def embed_offers(assets_ordered: dict):
     title = f"{EMOJI_BROOM} Unsigs Floor {EMOJI_BROOM}"
-    description="Cheapest unsigs on marketplace"
+    description="Cheapest unsigs on marketplace\n(auctions excluded)"
     color=discord.Colour.dark_blue()
 
     embed = discord.Embed(title=title, description=description, color=color)
@@ -1217,8 +1217,8 @@ async def floor(ctx: SlashContext):
         return
     
     if bot.offers:
-        for_sale = filter_available_assets(bot.offers)
-        ordered_by_props = order_by_num_props(for_sale)
+        filtered = filter_assets_by_type(bot.offers, "listing", "offer", "Buy")
+        ordered_by_props = order_by_num_props(filtered)
 
         embed = embed_offers(ordered_by_props)
 
@@ -1696,6 +1696,7 @@ async def pattern_combo(ctx: SlashContext, first_pattern: str, second_pattern: s
 
 
     embed = embed_pattern_combo(pattern_found, pattern_for_search, to_display, cols)
+    embed.set_footer(text=f"\nDiscord Bot by Mar5man")
 
     if to_display:
         try:

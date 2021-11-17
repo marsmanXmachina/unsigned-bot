@@ -6,6 +6,7 @@ from tokhun import get_data_from_marketplace
 from urls import TOKHUN_API_URL, CNFT_API_URL
 
 from utility.files_util import load_json, save_json
+from utility.time_util import timestamp_to_datetime
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -40,4 +41,4 @@ if __name__ == '__main__':
 
     save_json("json/total_sales.json", total_assets)
 
- 
+
