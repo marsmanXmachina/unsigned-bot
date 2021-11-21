@@ -1,7 +1,7 @@
 from collections import defaultdict, Counter
 
-from utility.files_util import load_json
-from utility.geom_util import get_direction_from_rotation
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.utility.geom_util import get_direction_from_rotation
 
 SUBPATTERN_NAMES = ["no-liner", "post", "triple post", "beam", "triple beam", "diagonal", "hourglass", "rivers", "veins", "bulb", "triple bulb"]
 
@@ -24,8 +24,6 @@ def order_by_color(layers: list) -> dict:
     
     return ordered
 
-
-
 def get_subpattern(layers: list) -> dict:
 
     layers_by_color = order_by_color(layers)
@@ -46,7 +44,6 @@ def format_subpattern(subpattern: dict) -> list:
         formatted.append(tuple(sorted(color_layers)))
 
     return formatted
-
 
 def get_subpattern_names(subpattern: dict) -> dict:
 

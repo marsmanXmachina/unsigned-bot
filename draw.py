@@ -9,6 +9,8 @@ from deconstruct import order_by_color, get_prop_layers
 
 from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, calc_pixel_percentages, get_max_percentage, get_color_frequencies
 
+IMAGE_DIR = "data/img"
+
 BORDER = 10
 
 DIM = 512

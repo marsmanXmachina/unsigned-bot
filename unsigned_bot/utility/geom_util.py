@@ -1,5 +1,3 @@
-
-
 def get_direction_from_rotation(rotation: int) -> str:
     rotations = {
         0: "vertical",

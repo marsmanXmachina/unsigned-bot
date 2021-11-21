@@ -3,9 +3,6 @@ import os
 import json
 import copy
 
-from utility.time_util import datetime_to_timestamp
-from utility.files_util import save_json
-
 import asyncio
 
 import requests
@@ -13,11 +10,12 @@ from requests_html import HTMLSession, AsyncHTMLSession
 
 import aiohttp
 
+from utility.time_util import datetime_to_timestamp
 from utility.files_util import load_json
 
 from parsing import get_idx_from_asset_name
 
-from urls import POOL_PM_URL, CNFT_API_URL
+from urls import CARDANOSCAN_URL, BLOCKFROST_IPFS_URL, POOL_PM_URL
 
 from dotenv import load_dotenv
 load_dotenv() 
@@ -28,12 +26,11 @@ BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
 BLOCKFROST_API_HEADERS = {
     "project_id": BLOCKFROST_API_TOKEN
 }
-
 BLOCKFROST_API_URL = "https://cardano-mainnet.blockfrost.io/api/v0"
 
 ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
 
-from urls import CARDANOSCAN_URL, BLOCKFROST_IPFS_URL
+
 
 
 def post_request(url, payload: dict):
@@ -204,6 +201,8 @@ def add_num_props(assets: list) -> list:
         asset["num_props"] = unsigs_data.get("num_props")
     
     return assets
+
+
 
 def get_request(url, headers=None, params=None):
     try:

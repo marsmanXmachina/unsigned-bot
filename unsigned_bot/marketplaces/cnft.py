@@ -1,20 +1,17 @@
 import copy
 
 import asyncio
-
-import requests
 import aiohttp
 
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.utility.time_util import datetime_to_timestamp
 
-from utility.files_util import load_json
-from utility.time_util import datetime_to_timestamp
+from unsigned_bot.parsing import get_idx_from_asset_name
 
-from parsing import get_idx_from_asset_name
+from unsigned_bot import ROOT_DIR
 
-from urls import CNFT_API_URL
 
 MARKETPLACE = "cnft"
-
 
 async def fetch_data_from_marketplace(url, project_name: str, sold=False) -> list:
     
@@ -155,3 +152,4 @@ def add_num_props(assets: list) -> list:
         asset["num_props"] = unsigs_data.get("num_props")
     
     return assets
+

@@ -1,3 +1,5 @@
+# emojis for discord embeds
+
 EMOJI_FRAME="\U0001F5BC"
 EMOJI_RAINBOW = "\U0001F308"
 EMOJI_BARCHART = "\U0001F4CA"

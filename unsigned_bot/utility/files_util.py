@@ -11,4 +11,3 @@ def save_json(path, data):
     with open(path, "w") as outfile:
         json.dump(data, outfile)
 
-

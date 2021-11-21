@@ -5,8 +5,6 @@ import re
 
 from utility.files_util import load_json
 
-from pprint import pprint
-
 TOTAL_PIXELS = 16384
 
 PIXELS_COLORS = {

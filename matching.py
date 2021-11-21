@@ -3,8 +3,8 @@ import random
 
 from collections import defaultdict
 
-from utility.files_util import load_json
-from utility.geom_util import get_opposite_side, get_direction_from_rotation, get_rotations_from_direction
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.utility.geom_util import get_opposite_side, get_direction_from_rotation, get_rotations_from_direction
 
 from deconstruct import get_prop_layers, order_by_color, get_subpattern, format_subpattern
 
@@ -270,6 +270,7 @@ def check_similarity(u1_data, u2_data, structural=True):
 
 def check_axial_symmetry(layers1, layers2):
     directions = ["horizontal", "vertical"]
+    
 
     for direction in directions:
         mirrored = mirror_layers(layers1, direction)
@@ -343,3 +344,4 @@ def get_subpattern_mutations(subpattern):
         mutations.append(formatted)
 
     return mutations
+

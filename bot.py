@@ -1,36 +1,32 @@
 import os
-import math
-import random
-import re
-import json
-
 import pprint
 
+import math
+import random
 import numpy as np
 
 from datetime import datetime
 
 import asyncio
 
-from collections import defaultdict, Counter
+from collections import Counter
 
 import discord
 from discord.ext import commands
 from discord.ext.tasks import loop
-
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-from utility.files_util import load_json, save_json
-from utility.time_util import timestamp_to_datetime, get_interval_from_period
-from utility.price_util import get_min_prices, get_average_price
+from unsigned_bot.utility.files_util import load_json, save_json
+from unsigned_bot.utility.time_util import timestamp_to_datetime, get_interval_from_period
+from unsigned_bot.utility.price_util import get_min_prices, get_average_price
 
 from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
 from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
 
-from fetch import fetch_data_from_marketplace, get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id, get_wallet_balance
-from parsing import *
+from fetch import get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id, get_wallet_balance
+from unsigned_bot.parsing import *
 from aggregate import aggregate_data_from_marketplaces
 
 from matching import match_unsig, choose_best_matches, get_similar_unsigs
@@ -39,14 +35,13 @@ from twitter import tweet_sales, create_twitter_api
 
 from deconstruct import SUBPATTERN_NAMES, get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
 
-from my_constants import MAX_AMOUNT, TREASURY_ADDRESS
+from unsigned_bot.constants import MAX_AMOUNT, TREASURY_ADDRESS
 from emojis import *
 from urls import *
 
 from dotenv import load_dotenv
 load_dotenv() 
 
-INVERVAL_LOOP=900
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
@@ -63,11 +58,7 @@ GUILD_NAME = os.getenv('GUILD_NAME')
 GUILD_ID = os.getenv('GUILD_ID')
 GUILD_IDS=[int(GUILD_ID)]
 
-DISCORD_COLOR_CODES = {
-    "blue": "ini",
-    "red": "diff",
-    "green": "bash"  
-}
+INVERVAL_LOOP=900
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
@@ -77,6 +68,7 @@ bot.offers = None
 bot.offers_updated = None
 bot.certs = load_json("json/certificates.json")
 bot.certs_updated = None
+
 try:
     bot.twitter_api = create_twitter_api()
 except:
@@ -2152,5 +2144,6 @@ async def fetch_data():
 
     print("Updated:", datetime.now()) 
 
+# running bot in loop
+# bot.run(TOKEN)
 
-bot.run(TOKEN)
