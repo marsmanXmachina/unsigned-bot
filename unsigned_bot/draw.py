@@ -1,13 +1,23 @@
+"""
+Module for generating images and animations
+"""
+
 import os
 import math
 import asyncio
 import numpy as np
 from PIL import Image, ImageOps, ImageDraw
 
-from utility.files_util import load_json
-from deconstruct import order_by_color, get_prop_layers
-
-from colors import TOTAL_PIXELS, COLORS_SORTED, rgb_2_hex, calc_pixel_percentages, get_max_percentage, get_color_frequencies
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.deconstruct import order_by_color, get_prop_layers
+from unsigned_bot.colors import (
+    TOTAL_PIXELS,
+    COLORS_SORTED,
+    rgb_2_hex,
+    calc_pixel_percentages,
+    get_max_percentage
+)
+from unsigned_bot import ROOT_DIR
 
 IMAGE_DIR = "data/img"
 
@@ -21,7 +31,7 @@ STD = DIM/6
 
 
 def load_unsig_data(idx):
-    unsigs = load_json("json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
     return unsigs.get(str(idx))
 
 def norm(x , mean , std):
@@ -237,13 +247,9 @@ async def gen_evolution(idx, show_single_layers=True, extended=False):
 
 async def gen_subpattern(idx):
     PADDING = 150
-
     COLORS = ["Red", "Green", "Blue"]
 
     unsig_data = load_unsig_data(idx)
-
-    num_props = unsig_data.get("num_props")
-
     layers = get_prop_layers(unsig_data)
     ordered_by_color = order_by_color(layers)
 
@@ -283,7 +289,7 @@ async def gen_subpattern(idx):
     x_offset = PADDING
     y_offset = PADDING  
 
-    for image_idx, image in enumerate(images):
+    for image in images:
         image = image.rotate(180)
         layer_width, layer_height = image.size
         shift = int(layer_height * 0.8)
@@ -314,7 +320,7 @@ async def gen_subpattern(idx):
 
 async def gen_grid(unsigs: list, cols):
 
-    unsigs_data = load_json("json/unsigs.json")
+    unsigs_data = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     num_unsigs = len(unsigs)
     if cols > num_unsigs:
@@ -432,7 +438,7 @@ async def gen_animation(idx, mode="fade", backwards=False):
         duration_frames[-1] = 1000
         durations.extend(duration_frames)
     
-    images_faded = images_faded[::-1]
+    images_faded = images_faded[::-1] #reverse frame order
 
     durations[0] = 3000
     durations[-1] = 1000
@@ -456,12 +462,12 @@ def delete_image_files(path, suffix="png"):
 
 async def gen_grid_with_matches(best_matches):
 
-    unsigs_data = load_json("json/unsigs.json")
+    unsigs_data = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     padding = 50
     margin = 2
 
-    unsig_width, unsig_height = DIM, DIM
+    unsig_width, _ = DIM, DIM
 
     unsig_box_width = unsig_box_height = (unsig_width+2*margin)
 
@@ -512,7 +518,7 @@ async def gen_image_for_tweet(idx):
     image_array = gen_image_array(unsig_data, dim=2048)
     image = Image.fromarray(image_array)
 
-    width, height = background_size
+    width, _ = background_size
     pos_x = int(width/2 - image.width / 2)
     pos_y = 0
     background.paste(image, (pos_x, pos_y))
@@ -587,3 +593,11 @@ async def gen_color_histogram(idx: str, color_frequencies: dict, sort_colors=Fal
     image.close()
 
     return path
+
+
+if __name__ == "__main__":
+    from colors import get_color_frequencies
+
+    number = "7366"
+    freqs = get_color_frequencies(number)
+    asyncio.run(gen_color_histogram(number, freqs))

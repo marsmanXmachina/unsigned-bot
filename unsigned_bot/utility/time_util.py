@@ -1,5 +1,10 @@
+"""
+Utility functions for date and time
+"""
+
 from datetime import datetime
 from dateutil import parser
+
 
 INVERVALS_IN_DAYS = {
     "day": 1,

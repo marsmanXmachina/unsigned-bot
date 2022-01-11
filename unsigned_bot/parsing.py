@@ -1,3 +1,7 @@
+"""
+Module for parsing and filtering data
+"""
+
 import re
 import time
 from datetime import datetime
@@ -5,12 +9,13 @@ from operator import itemgetter
 from collections import defaultdict
 
 from unsigned_bot.utility.files_util import load_json
-
 from unsigned_bot.constants import MAX_AMOUNT
-from urls import UNSIGS_URL
+from unsigned_bot.urls import UNSIGS_URL
+from unsigned_bot import ROOT_DIR
+
 
 def get_asset_id(asset_name: str) -> str:
-    asset_ids = load_json("json/asset_ids.json")
+    asset_ids = load_json(f"{ROOT_DIR}/json/asset_ids.json")
     return asset_ids.get(asset_name, None)
 
 def get_asset_name_from_idx(idx: str) -> str:
@@ -34,7 +39,7 @@ def get_numbers_from_assets(assets: list) -> list:
     return [get_idx_from_asset_name(asset.get("assetid")) for asset in assets]
 
 def get_asset_name_from_minting_order(idx:str) -> str:
-    minting_order = load_json("json/minted.json")
+    minting_order = load_json(f"{ROOT_DIR}/json/minted.json")
     try:
         idx = int(idx)
         asset_name = minting_order[idx-1]
@@ -112,7 +117,7 @@ def link_asset_to_marketplace(number: str, marketplace_id: str, marketplace: str
     url = get_url_from_marketplace_id(marketplace_id, marketplace)
     return f" [#{str(number).zfill(5)}]({url}) "
 
-def link_assets_to_gallery(numbers, cols):
+def link_assets_to_grid(numbers, cols):
     assets_str = ""
 
     for i, number in enumerate(numbers):

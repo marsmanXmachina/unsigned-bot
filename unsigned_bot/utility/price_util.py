@@ -1,3 +1,7 @@
+"""
+Utility functions for handling price data
+"""
+
 def get_min_prices(assets: list) -> list:
     min_price = min([asset.get("price") for asset in assets])
     return [asset for asset in assets if asset.get("price") == min_price]

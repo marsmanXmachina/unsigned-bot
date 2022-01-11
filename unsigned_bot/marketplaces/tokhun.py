@@ -1,22 +1,16 @@
-import os
-import asyncio
+"""
+Module for fetching data from tokhun.io marketplace
+"""
 
 import requests
 from ratelimit import limits
 
-from utility.files_util import load_json, save_json
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.parsing import get_idx_from_asset_name
+from unsigned_bot import ROOT_DIR
 
-from parsing import get_idx_from_asset_name
-
-from urls import TOKHUN_API_URL
-
-from dotenv import load_dotenv
-load_dotenv() 
-
-POLICY_ID = os.getenv('POLICY_ID')
 
 MARKETPLACE = "tokhun"
-
 
 async def get_data_from_marketplace(base_url, policy_id: str, sold=False) -> list:
     if sold:
@@ -69,7 +63,7 @@ def parse_data(assets, sold=False):
         asset_parsed = dict()
         asset_parsed["assetid"] = asset.get("asset_name")
         asset_parsed["unit"] = asset.get("asset_id")
-        price = asset.get("price_in_ada")*1000000 # convert price to lovelace
+        price = asset.get("price_in_ada")*1000000 # convert price in ADA to lovelace
         asset_parsed["price"] = int(price)
         asset_parsed["id"] = asset.get("sale_id")
         asset_parsed['marketplace'] = MARKETPLACE
@@ -90,7 +84,7 @@ def parse_data(assets, sold=False):
     return parsed
 
 def add_num_props(assets: list) -> list:
-    unsigs = load_json("json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     for asset in assets:
         asset_name = asset.get("assetid")

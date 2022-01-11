@@ -1,36 +1,30 @@
-import os
+"""
+Module for fetching data
+"""
 
+import os
 import json
 import copy
-
 import asyncio
-
 import requests
 from requests_html import HTMLSession, AsyncHTMLSession
-
 import aiohttp
 
-from utility.time_util import datetime_to_timestamp
-from utility.files_util import load_json
-
-from parsing import get_idx_from_asset_name
-
-from urls import CARDANOSCAN_URL, BLOCKFROST_IPFS_URL, POOL_PM_URL
+from unsigned_bot.utility.time_util import datetime_to_timestamp
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.parsing import get_idx_from_asset_name
+from unsigned_bot.constants import POLICY_ID, ASSESSMENTS_POLICY_ID
+from unsigned_bot.urls import CARDANOSCAN_URL, BLOCKFROST_IPFS_URL, BLOCKFROST_API_URL, POOL_PM_URL
+from unsigned_bot import ROOT_DIR
 
 from dotenv import load_dotenv
 load_dotenv() 
-
-POLICY_ID = os.getenv('POLICY_ID')
 
 BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
 BLOCKFROST_API_HEADERS = {
     "project_id": BLOCKFROST_API_TOKEN
 }
 BLOCKFROST_API_URL = "https://cardano-mainnet.blockfrost.io/api/v0"
-
-ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
-
-
 
 
 def post_request(url, payload: dict):
@@ -50,11 +44,6 @@ def get_items_found(url, payload: dict):
 
 def get_payloads(pages: list, payload: dict):
     payloads = list()
-
-    # items_found = get_items_found(url, payload)
-    # if items_found:
-    #     items_per_page = payload.get("count")
-    #     pages = (items_found // items_per_page) + 1
 
     for idx in pages:
         page = idx + 1
@@ -191,7 +180,7 @@ def parse_data(assets: list, sold=False) -> list:
     return parsed
 
 def add_num_props(assets: list) -> list:
-    unsigs = load_json("json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     for asset in assets:
         asset_name = asset.get("assetid")
@@ -260,7 +249,7 @@ def get_tx_timestamp(tx_id):
 
 
 async def get_ipfs_url_from_file(asset_name):
-    ipfs_urls = load_json("json/ipfs_urls.json")
+    ipfs_urls = load_json(f"{ROOT_DIR}/json/ipfs_urls.json")
     return ipfs_urls.get(asset_name, None)
 
 
@@ -329,16 +318,16 @@ def get_metadata_from_asset_name(asset_name):
     return response.get("metadata")
 
 def get_unsigs_data(idx:str):
-    unsigs_data = load_json("json/unsigs.json")
+    unsigs_data = load_json(f"{ROOT_DIR}/json/unsigs.json")
     return unsigs_data.get(idx, None)
 
 def get_minting_number(asset_name):
-    minting_order = load_json("json/minted.json")
+    minting_order = load_json(f"{ROOT_DIR}/json/minted.json")
     number = minting_order.index(asset_name) + 1
     return number
 
 def get_minting_data(number: str):
-    unsigs_minted = load_json("json/unsigs_minted.json")
+    unsigs_minted = load_json(f"{ROOT_DIR}/json/unsigs_minted.json")
     
     minting_data = unsigs_minted.get(number)
 

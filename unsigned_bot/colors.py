@@ -1,9 +1,13 @@
+"""
+Module for colors functionalities
+"""
+
 import math
 import colorsys
-
 import re
 
-from utility.files_util import load_json
+from unsigned_bot.utility.files_util import load_json
+from unsigned_bot import ROOT_DIR
 
 TOTAL_PIXELS = 16384
 
@@ -288,7 +292,6 @@ def step (r,g,b, repetitions=1):
     lum = math.sqrt( .241 * r + .691 * g + .068 * b )
     h, s, v = colorsys.rgb_to_hsv(r,g,b)
     h2 = int(h * repetitions)
-    lum2 = int(lum * repetitions)
     v2 = int(v * repetitions)
     if h2 % 2 == 1:
         v2 = repetitions - v2
@@ -302,9 +305,8 @@ def rgb_2_hex(rgb: tuple):
     return "#{:02x}{:02x}{:02x}".format(*rgb)
 
 def get_color_frequencies(idx: str) -> list:
-    unsigs_colors = load_json("json/color_frequencies.json")
+    unsigs_colors = load_json(f"{ROOT_DIR}/json/color_frequencies.json")
     color_frequencies = unsigs_colors.get(str(idx))
-
     return {tuple([int(n) for n in re.findall('[0-9]+', k)]): v for k,v in color_frequencies.items()}
 
 def get_total_colors(color_frequencies: dict) -> int:
@@ -312,7 +314,6 @@ def get_total_colors(color_frequencies: dict) -> int:
 
 def get_top_colors(color_frequencies: dict, num_ranks=10):
     colors_sorted = sorted(color_frequencies.items(), key=lambda x: x[1], reverse=True)
-
     return {k: v/TOTAL_PIXELS for k,v in dict(colors_sorted[:num_ranks]).items() if v != 0}
 
 def link_hex_color(color_hex):
@@ -327,7 +328,6 @@ def get_max_percentage(percentages: dict) -> float:
 
 def calc_color_rarity(color_frequencies: dict) -> float:
     percentages = calc_pixel_percentages(color_frequencies)
-    # weighted_ranks = [COLOR_RANKING.get(k) * v for k,v in percentages.items()]
     weighted_rarity = [PERCENTAGES_NORMALIZED.get(k) * v * 64 for k,v in percentages.items()]
     return sum(weighted_rarity)
 

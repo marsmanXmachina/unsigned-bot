@@ -1,7 +1,12 @@
+"""
+Essential Urls
+"""
+
 DISCORD_API_URL = "https://discord/api/v9"
 
 CARDANOSCAN_URL = "https://cardanoscan.io"
 
+BLOCKFROST_API_URL = "https://cardano-mainnet.blockfrost.io/api/v0"
 BLOCKFROST_IPFS_URL = "https://ipfs.blockfrost.dev/ipfs"
 
 POOL_PM_URL= "https://pool.pm"
@@ -13,6 +18,7 @@ TOKHUN_URL = "https://tokhun.io"
 TOKHUN_API_URL = "https://tokhun.io/api/v1/marketplace"
 
 UNSIGS_URL = "https://www.unsigs.com"
+UNSIG_MATCHBOX_LINK = "https://discord.gg/RR8rhNH2"
 
 
 MARKETPLACES = {

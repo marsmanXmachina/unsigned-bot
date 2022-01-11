@@ -1,64 +1,104 @@
 import os
 import pprint
-
 import math
 import random
 import numpy as np
-
 from datetime import datetime
-
 import asyncio
-
 from collections import Counter
 
 import discord
 from discord.ext import commands
 from discord.ext.tasks import loop
 from discord_slash import SlashCommand, SlashContext
-from discord_slash.context import ComponentContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
 from unsigned_bot.utility.files_util import load_json, save_json
 from unsigned_bot.utility.time_util import timestamp_to_datetime, get_interval_from_period
 from unsigned_bot.utility.price_util import get_min_prices, get_average_price
-
-from draw import gen_evolution, gen_subpattern, gen_grid, gen_grid_with_matches, gen_animation, gen_color_histogram, delete_image_files
-from colors import COLOR_RANKING, PIXELS_COLORS, get_color_frequencies, get_total_colors, get_top_colors, rgb_2_hex, link_hex_color, calc_color_rarity
-
-from fetch import get_new_certificates, get_ipfs_url_from_file, get_current_owner_address, get_unsigs_data, get_minting_data, get_metadata_from_asset_name, get_minting_tx_id, get_wallet_balance
-from unsigned_bot.parsing import *
-from aggregate import aggregate_data_from_marketplaces
-
-from matching import match_unsig, choose_best_matches, get_similar_unsigs
-
-from twitter import tweet_sales, create_twitter_api
-
-from deconstruct import SUBPATTERN_NAMES, get_prop_layers, get_subpattern, get_subpattern_names, filter_subs_by_names
-
-from unsigned_bot.constants import MAX_AMOUNT, TREASURY_ADDRESS
-from emojis import *
-from urls import *
+from unsigned_bot.embedding import *
+from unsigned_bot.fetch import (
+    get_new_certificates,
+    get_ipfs_url_from_file,
+    get_current_owner_address,
+    get_unsigs_data,
+    get_minting_data,
+    get_metadata_from_asset_name,
+    get_minting_tx_id,
+    get_wallet_balance
+)
+from unsigned_bot.parsing import (
+    get_asset_id,
+    get_asset_name_from_idx,
+    get_asset_name_from_minting_order,
+    get_asset_from_number,
+    get_idx_from_asset_name,
+    get_numbers_from_assets,
+    get_numbers_from_string,
+    order_by_num_props,
+    get_unsig_url,
+    get_url_from_marketplace_id,
+    link_asset_to_marketplace,
+    link_assets_to_grid,
+    get_certificate_data_by_number,
+    filter_certs_by_time_interval,
+    filter_by_time_interval,
+    filter_sales_by_asset,
+    filter_new_sales,
+    filter_assets_by_type,
+    sort_sales_by_date,
+    unsig_exists
+)
+from unsigned_bot.aggregate import aggregate_data_from_marketplaces
+from unsigned_bot.matching import match_unsig, choose_best_matches, get_similar_unsigs
+from unsigned_bot.deconstruct import (
+    SUBPATTERN_NAMES, 
+    get_prop_layers,
+    get_subpattern,
+    get_subpattern_names,
+    filter_subs_by_names
+)
+from unsigned_bot.draw import (
+    gen_evolution,
+    gen_subpattern,
+    gen_grid,
+    gen_grid_with_matches,
+    gen_animation,
+    gen_color_histogram,
+    delete_image_files
+)
+from unsigned_bot.colors import (
+    COLOR_RANKING, PIXELS_COLORS, 
+    get_color_frequencies,
+    get_total_colors,
+    get_top_colors,
+    rgb_2_hex,
+    link_hex_color,
+    calc_color_rarity
+)
+from unsigned_bot.twitter import tweet_sales, create_twitter_api
+from unsigned_bot.constants import POLICY_ID, MAX_AMOUNT, TREASURY_ADDRESS
+from unsigned_bot.emojis import *
+from unsigned_bot.urls import *
+from unsigned_bot import ROOT_DIR
 
 from dotenv import load_dotenv
 load_dotenv() 
-
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
 
 TOKEN = os.getenv('BOT_TOKEN')
 
-POLICY_ID = os.getenv('POLICY_ID')
-ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
-
 SALES_CHANNEL=os.getenv('SALES_CHANNEL')
 SALES_CHANNEL_ID = int(os.getenv('SALES_CHANNEL_ID'))
-
 GUILD_NAME = os.getenv('GUILD_NAME')
 GUILD_ID = os.getenv('GUILD_ID')
 GUILD_IDS=[int(GUILD_ID)]
 
 INVERVAL_LOOP=900
+
+
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
@@ -649,7 +689,7 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
         embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / 31119** unsigs contain this subpattern", inline=False)
 
     if to_display:
-        unsigs_str=link_assets_to_gallery(to_display, cols)
+        unsigs_str=link_assets_to_grid(to_display, cols)
         embed.add_field(name=f"{EMOJI_ARROW_DOWN} Random selection {EMOJI_ARROW_DOWN}", value=unsigs_str, inline=False)
 
     return embed
@@ -912,37 +952,154 @@ and in its darkness bind them
     
     await ctx.send(embed=embed)
 
+
+BOT_COMMANDS = {
+    "general": {
+        "description": "commands for general information",
+        "faq": {
+            "syntax": "/faq",
+            "hint": "show important information"
+        },
+    },
+    "data": {
+        "description": "commands to get info about your unsig",
+        "unsig": {
+            "syntax": "/unsig + `integer`",
+            "hint": "show info for unsig with given number"
+        },
+        "metadata": {
+            "syntax": "/metadata + `integer`",
+            "hint": "show data of unsig with given number"
+        },
+        "minted": {
+            "syntax": "/minted + `integer`",
+            "hint": "show unsig with given minting order"
+        },
+        "cert": {
+            "syntax": "/cert + `integer`",
+            "hint": "show cert of unsig with given number"
+        }
+    },
+    "analysis": {
+        "description": "commands to deconstruct your unsig",
+        "evo": {
+            "syntax": "/evo + `integer`",
+            "hint": "show composition of your unsig"
+        },
+        "invo": {
+            "syntax": "/invo + `integer`",
+            "hint": "show ingredients of your unsig"
+        },
+        "subs": {
+            "syntax": "/subs + `integer`",
+            "hint": "show subpattern of your unsig"
+        },
+        "pattern-combo": {
+            "syntax": "/pattern-combo",
+            "hint": "count unsigs with given pattern combo"
+        }
+    },
+    "colors": {
+        "description": "commands for color analysis",
+        "colors": {
+            "syntax": "/colors + `integer`",
+            "hint": "show output colors of your unsig"
+        },
+        "color-ranking": {
+            "syntax": "/color-ranking",
+            "hint": "show color ranking"
+        }
+    },
+    "ownership": {
+        "description": "commands for ownership of unsigs",
+        "owner": {
+            "syntax": "/owner + `integer`",
+            "hint": "show wallet of given unsig"
+        }
+    },
+    "market": {
+        "description": "commands for offers and sales",
+        "sell": {
+            "syntax": "/sell + `integer` + `price`",
+            "hint": "offer your unsig for sale"
+        },
+        "floor": {
+            "syntax": "/floor",
+            "hint": "show cheapest unsigs on marketplace"
+        },
+        "sales": {
+            "syntax": "/sales",
+            "hint": "show sold unsigs on marketplace"
+        },
+        "like": {
+            "syntax": "/like + `integer`",
+            "hint": "show related unsigs sold"
+        },
+        "matches": {
+            "syntax": "/matches + `integer`",
+            "hint": "show available matches on marketplace"
+        }
+    },
+    "collection": {
+        "description": "commands for your unsig collection",
+        "show": {
+            "syntax": "/show + `numbers`",
+            "hint": "show your unsig collection"
+        },
+        "siblings": {
+            "syntax": "/siblings + `integer`",
+            "hint": "show siblings of your unsig"
+        }
+    }
+}
+
 @slash.slash(
     name="help", 
     description="Get overview of my commands", 
     guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="category",
+            description="Choose category",
+            required=False,
+            option_type=3,
+            choices=[
+                create_choice(
+                    name=f"{command.capitalize()}",
+                    value=command
+                ) for command, _ in BOT_COMMANDS.items()
+            ]
+        )
+    ]
 )
-async def help(ctx: SlashContext):
-    title = f"{EMOJI_ROBOT} My commands {EMOJI_ROBOT}"
-    description="How can I help you?"
-    color=discord.Colour.dark_blue()
+async def help(ctx: SlashContext, category=None):
+    if not category:
+        title = f"{EMOJI_ROBOT} My commands {EMOJI_ROBOT}"
+        description="How can I help you?"
+    else:
+        emoji = COMMAND_CATEGORIES.get(category)
+        title = f"{emoji} {category.capitalize()} commands {emoji}"
+        description = BOT_COMMANDS.get(category).get("description")
 
+    color=discord.Colour.dark_blue()        
     embed = discord.Embed(title=title, description=description, color=color) 
 
-    embed.add_field(name="/faq", value="show important information", inline=False)
-    embed.add_field(name="/unsig + `integer`", value="show data of unsig with given number", inline=False)
-    embed.add_field(name="/metadata + `integer`", value="show metadata of your unsig", inline=False)
-    embed.add_field(name="/minted + `integer`", value="show unsig with given minting order", inline=False)
-    embed.add_field(name="/evo + `integer`", value="show composition of your unsig", inline=False)
-    embed.add_field(name="/invo + `integer`", value="show ingredients of your unsig", inline=False)
-    embed.add_field(name="/subs + `integer`", value="show subpattern of your unsig", inline=False)
-    embed.add_field(name="/colors + `integer`", value="show output colors of your unsig", inline=False)
-    embed.add_field(name="/color-ranking", value="show color ranking", inline=False)
-    embed.add_field(name="/owner + `integer`", value="show wallet of given unsig", inline=False)
-    embed.add_field(name="/sell + `integer` + `price`", value="offer your unsig for sale", inline=False)
-    embed.add_field(name="/show + `numbers`", value="show your unsig collection", inline=False)
-    embed.add_field(name="/floor", value="show cheapest unsigs on marketplace", inline=False)
-    embed.add_field(name="/sales", value="show data of sold unsigs on marketplace", inline=False)
-    embed.add_field(name="/matches + `integer`", value="show available matches on marketplace", inline=False)
-    embed.add_field(name="/siblings + `integer`", value="show siblings of your unsig", inline=False)
-    embed.add_field(name="/like + `integer`", value="show related unsigs sold", inline=False)
-    embed.add_field(name="/pattern-combo", value="count unsigs with given pattern combo", inline=False)
-    embed.add_field(name="/cert + `integer`", value="show cert of unsig with given number", inline=False)
+    for command_group, commands in BOT_COMMANDS.items():
+        if not category:
+            emoji = COMMAND_CATEGORIES.get(command_group)
+            description = commands.get("description")
+
+            embed.add_field(name=f"\n{emoji} {command_group.capitalize()}", value=description, inline=False)
+        else:
+            if category == command_group:
+                for command, values in commands.items():
+                    if command == "description":
+                        continue
+
+                    syntax = values.get("syntax")
+                    hint = values.get("hint")
+
+                    embed.add_field(name=syntax, value=hint, inline=False)
     
     await ctx.send(embed=embed)
 
@@ -2145,5 +2302,5 @@ async def fetch_data():
     print("Updated:", datetime.now()) 
 
 # running bot in loop
-# bot.run(TOKEN)
+bot.run(TOKEN)
 

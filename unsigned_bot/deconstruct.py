@@ -1,9 +1,13 @@
+"""
+Module for breaking down unsigs into its layers and pattern
+"""
+
 from collections import defaultdict, Counter
 
-from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.geom_util import get_direction_from_rotation
 
 SUBPATTERN_NAMES = ["no-liner", "post", "triple post", "beam", "triple beam", "diagonal", "hourglass", "rivers", "veins", "bulb", "triple bulb"]
+
 
 def get_prop_layers(unsig_data: dict) -> list:
     props = unsig_data.get("properties")

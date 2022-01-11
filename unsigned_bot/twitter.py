@@ -1,23 +1,21 @@
+"""
+Module for communication with Twitter API
+"""
+
 import os
-import time
-
-import tweepy
 import requests
+import tweepy
 
-import asyncio
-
-from emojis import *
-
-from fetch import get_ipfs_url_from_file
-from parsing import parse_sale, get_unsig_url, get_idx_from_asset_name
-
-from draw import gen_unsig, gen_animation, delete_image_files
+from unsigned_bot.parsing import parse_sale, get_unsig_url, get_idx_from_asset_name
+from unsigned_bot.draw import gen_unsig, delete_image_files
+from unsigned_bot.emojis import *
 
 from dotenv import load_dotenv
 load_dotenv() 
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
+
 
 def create_twitter_api():
     consumer_key = os.getenv("CONSUMER_KEY")
@@ -49,12 +47,6 @@ async def tweet_sales(api, sales):
             filepath_image = await gen_unsig(unsig_number, dim=2048)
 
             media_img = api.media_upload(filename=filepath_image)
-
-            # await gen_animation(str(unsig_number), mode="fade", backwards=True)
-            # filepath_animation = f"img/animation_{unsig_number}.gif"
-
-            # media_gif = api.media_upload(filename=filepath_animation, chunked=True, media_category="tweet_gif")
-
             api.update_status(status=tweet_string, media_ids=[media_img.media_id])
 
         except:

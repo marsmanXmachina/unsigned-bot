@@ -1,12 +1,15 @@
+"""
+Module for finding matching unsigs
+"""
 
 import random
-
 from collections import defaultdict
 
 from unsigned_bot.utility.files_util import load_json
-from unsigned_bot.utility.geom_util import get_opposite_side, get_direction_from_rotation, get_rotations_from_direction
+from unsigned_bot.utility.geom_util import get_opposite_side, get_rotations_from_direction
+from unsigned_bot.deconstruct import get_prop_layers, order_by_color, get_subpattern, format_subpattern
+from unsigned_bot import ROOT_DIR
 
-from deconstruct import get_prop_layers, order_by_color, get_subpattern, format_subpattern
 
 def choose_best_matches(number: str, matches: dict) -> dict:
 
@@ -26,7 +29,7 @@ def choose_best_matches(number: str, matches: dict) -> dict:
 def match_unsig(number: str, numbers: list) -> dict:
     matches = defaultdict(list)
 
-    unsigs = load_json("json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     idx = int(number)
     if idx == 0:
@@ -229,7 +232,7 @@ def rotate_layers(layers: list, rotation_diff: str) -> list:
 
 
 def get_similar_unsigs(number, numbers, structural=True):
-    unsigs = load_json("json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     similar_unsigs = defaultdict(list)
 
@@ -344,4 +347,3 @@ def get_subpattern_mutations(subpattern):
         mutations.append(formatted)
 
     return mutations
-

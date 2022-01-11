@@ -1,13 +1,14 @@
-import copy
+"""
+Module for fetching data from cnft.io marketplace
+"""
 
+import copy
 import asyncio
 import aiohttp
 
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.time_util import datetime_to_timestamp
-
 from unsigned_bot.parsing import get_idx_from_asset_name
-
 from unsigned_bot import ROOT_DIR
 
 
@@ -142,7 +143,7 @@ def parse_data(assets: list, sold=False) -> list:
     return parsed
 
 def add_num_props(assets: list) -> list:
-    unsigs = load_json("json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
 
     for asset in assets:
         asset_name = asset.get("assetid")
@@ -152,4 +153,3 @@ def add_num_props(assets: list) -> list:
         asset["num_props"] = unsigs_data.get("num_props")
     
     return assets
-
