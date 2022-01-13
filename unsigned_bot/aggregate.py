@@ -30,4 +30,3 @@ async def aggregate_data_from_marketplaces(sold=False):
     return data
 
 
-

@@ -593,11 +593,3 @@ async def gen_color_histogram(idx: str, color_frequencies: dict, sort_colors=Fal
     image.close()
 
     return path
-
-
-if __name__ == "__main__":
-    from colors import get_color_frequencies
-
-    number = "7366"
-    freqs = get_color_frequencies(number)
-    asyncio.run(gen_color_histogram(number, freqs))
