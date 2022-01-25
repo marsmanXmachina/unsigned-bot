@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.constants import MAX_AMOUNT
-from unsigned_bot.urls import UNSIGS_URL
+from unsigned_bot.urls import UNSIGS_URL, CNFT_URL, TOKHUN_URL, JPGSTORE_URL
 from unsigned_bot import ROOT_DIR
 
 
@@ -109,9 +109,11 @@ def get_unsig_url(number: str):
 
 def get_url_from_marketplace_id(marketplace_id: str, marketplace="cnft") -> str:
     if marketplace == "cnft":
-        return f"https://cnft.io/token/{marketplace_id}"
+        return f"{CNFT_URL}/token/{marketplace_id}"
     if marketplace == "tokhun":
-        return f"https://tokhun.io/marketplace/{marketplace_id}"
+        return f"{TOKHUN_URL}/marketplace/{marketplace_id}"
+    if marketplace == "jpgstore":
+        return f"{JPGSTORE_URL}/asset/{marketplace_id}"
 
 def link_asset_to_marketplace(number: str, marketplace_id: str, marketplace: str) -> str:
     url = get_url_from_marketplace_id(marketplace_id, marketplace)
@@ -155,3 +157,14 @@ def parse_sale(sale_data: dict) -> tuple:
     
     return (marketplace_name, num_props, price, date)
 
+def add_num_props(assets: list) -> list:
+    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
+
+    for asset in assets:
+        asset_name = asset.get("assetid")
+        idx = get_idx_from_asset_name(asset_name)
+
+        unsigs_data = unsigs.get(str(idx))
+        asset["num_props"] = unsigs_data.get("num_props")
+    
+    return assets

@@ -17,13 +17,17 @@ CNFT_API_URL = "https://api.cnft.io/market/listings"
 TOKHUN_URL = "https://tokhun.io"
 TOKHUN_API_URL = "https://tokhun.io/api/v1/marketplace"
 
+JPGSTORE_URL = "https://www.jpg.store"
+JPGSTORE_API_URL = "https://www.jpg.store/api"
+
 UNSIGS_URL = "https://www.unsigs.com"
-UNSIG_MATCHBOX_LINK = "https://discord.gg/RR8rhNH2"
+UNSIG_MATCHBOX_LINK = "https://www.fibons.io/unsigs/services/"
 
 
 MARKETPLACES = {
     "CNFT.IO": "https://cnft.io/marketplace?project=unsigned_algorithms",
-    "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1"
+    "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1",
+    "jpg.store": "https://www.jpg.store/collection/unsigned_algorithms"
 }
 
 DISCORD_ESCROWS = {

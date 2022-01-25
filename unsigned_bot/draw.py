@@ -243,8 +243,6 @@ async def gen_evolution(idx, show_single_layers=True, extended=False):
     evolution.save(path)
     evolution.close()
 
-    print(f" Saved to => {path}")
-
 async def gen_subpattern(idx):
     PADDING = 150
     COLORS = ["Red", "Green", "Blue"]

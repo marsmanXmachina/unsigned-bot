@@ -20,177 +20,14 @@ from unsigned_bot import ROOT_DIR
 from dotenv import load_dotenv
 load_dotenv() 
 
+POLICY_ID = os.getenv('POLICY_ID')
+ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
+
 BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
 BLOCKFROST_API_HEADERS = {
     "project_id": BLOCKFROST_API_TOKEN
 }
 BLOCKFROST_API_URL = "https://cardano-mainnet.blockfrost.io/api/v0"
-
-
-def post_request(url, payload: dict):
-    try:
-        response = requests.post(url, payload).json()
-    except:
-        return
-    else:
-        return response
-
-def get_items_found(url, payload: dict):
-    response_data = post_request(url, payload)
-    if response_data:
-        items_found = response_data.get("found", None)
-        return items_found
-
-
-def get_payloads(pages: list, payload: dict):
-    payloads = list()
-
-    for idx in pages:
-        page = idx + 1
-        new_payload = copy.deepcopy(payload)
-        new_payload["page"] = page
-        payloads.append(new_payload)
-    
-    return payloads
-
-def get_tasks_for_pagination(session, url, payloads: list):
-    tasks = list()
-
-    for payload in payloads:
-        tasks.append(fetch(session, url, payload))
-
-    return tasks       
-
-async def fetch(session, url, payload: dict):
-    async with session.post(url, json=payload) as response:
-        try:
-            resp = await response.json()
-        except:
-            return
-        else:
-            return resp
-
-async def fetch_all(url, payload: dict, pages):
-    payloads = get_payloads(pages, payload)
-    if payloads:
-        async with aiohttp.ClientSession() as session:
-            tasks = get_tasks_for_pagination(session, url, payloads)
-            responses = await asyncio.gather(*tasks, return_exceptions=True)
-
-            return responses
-
-async def fetch_data_from_marketplace(url, project_name: str, sold=False) -> list:
-    
-    payload = {
-        "project": project_name,
-        "page": 1,
-        "verified": True,
-        "sold": sold
-    }
-
-    if sold:
-        payload["types"] = [] 
-    else:
-        payload["types"] = [
-            "auction",
-            "listing",
-            "offer"
-        ]
-    
-    BURST_SIZE = 25
-    
-    assets_total = list()
-
-    fetching = True
-    num_requests = 1
-    while fetching:
-        pages = range((num_requests-1) * BURST_SIZE, num_requests*BURST_SIZE)
-    
-        try:
-            responses = await fetch_all(url, payload, pages)
-        except:
-            print("Fetching data failed!")
-            return
-        else:
-            if responses:
-                assets = get_data_from_responses(responses)
-                if assets:
-
-                    assets_parsed = parse_data(assets, sold)
-                    assets_extended = add_num_props(assets_parsed)
-                    assets_total.extend(assets_extended)
-                else:
-                    fetching = False
-
-        num_requests += 1
-    
-    print(f"Total {len(assets_total)} assets found!")
-
-    return assets_total
-
-
-def get_data_from_responses(responses) -> list:
-    # num_assets_found = 0
-
-    assets = list()
-
-    for response in responses:
-        if response:
-            # if not num_assets_found:
-            #     num_assets_found = response.get("found", 0)
-
-            assets_found = response.get("results", None)
-            if assets_found:
-                assets.extend(assets_found)
-    
-    # if num_assets_found > len(assets):
-    #     print("not all assets requested")
-    #     print(num_assets_found, len(assets))
-    #     return
-    
-    # print(f"{len(assets)} assets found!")
-    return assets
-
-def parse_data(assets: list, sold=False) -> list:
-
-    parsed = list()
-
-    for asset in assets:
-        asset_parsed = dict()
-
-        asset_data = asset.get("asset")
-        asset_parsed["assetid"] = asset_data.get("assetId")
-        asset_parsed["price"] = asset.get("price")
-        asset_parsed["id"] = asset.get("_id")
-
-        if sold:
-            datetime_str = asset.get("soldAt")
-            asset_parsed["sold"] = True
-        else:
-            datetime_str = asset.get("createdAt")
-            asset_parsed["sold"] = False
-
-        if not datetime_str:
-            datetime_str = asset.get("updatedAt")
-
-        if datetime_str:
-            asset_parsed["date"] = datetime_to_timestamp(datetime_str)
-            parsed.append(asset_parsed)
-    
-    return parsed
-
-def add_num_props(assets: list) -> list:
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
-
-    for asset in assets:
-        asset_name = asset.get("assetid")
-        idx = get_idx_from_asset_name(asset_name)
-
-        unsigs_data = unsigs.get(str(idx))
-        asset["num_props"] = unsigs_data.get("num_props")
-    
-    return assets
-
 
 
 def get_request(url, headers=None, params=None):
@@ -383,6 +220,3 @@ def get_new_certificates(certificates: dict) -> dict:
         new_certs[cert_id] = cert_data
 
     return new_certs
-
-
-    

@@ -6,7 +6,7 @@ import requests
 from ratelimit import limits
 
 from unsigned_bot.utility.files_util import load_json
-from unsigned_bot.parsing import get_idx_from_asset_name
+from unsigned_bot.parsing import add_num_props
 from unsigned_bot import ROOT_DIR
 
 
@@ -83,15 +83,4 @@ def parse_data(assets, sold=False):
 
     return parsed
 
-def add_num_props(assets: list) -> list:
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
-
-    for asset in assets:
-        asset_name = asset.get("assetid")
-        idx = get_idx_from_asset_name(asset_name)
-
-        unsigs_data = unsigs.get(str(idx))
-        asset["num_props"] = unsigs_data.get("num_props")
-    
-    return assets
 

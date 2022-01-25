@@ -8,11 +8,11 @@ import aiohttp
 
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.time_util import datetime_to_timestamp
-from unsigned_bot.parsing import get_idx_from_asset_name
+from unsigned_bot.parsing import add_num_props
 from unsigned_bot import ROOT_DIR
 
-
 MARKETPLACE = "cnft"
+
 
 async def fetch_data_from_marketplace(url, project_name: str, sold=False) -> list:
     
@@ -141,15 +141,3 @@ def parse_data(assets: list, sold=False) -> list:
             parsed.append(asset_parsed)
     
     return parsed
-
-def add_num_props(assets: list) -> list:
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
-
-    for asset in assets:
-        asset_name = asset.get("assetid")
-        idx = get_idx_from_asset_name(asset_name)
-
-        unsigs_data = unsigs.get(str(idx))
-        asset["num_props"] = unsigs_data.get("num_props")
-    
-    return assets

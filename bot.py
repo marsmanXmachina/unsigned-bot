@@ -99,8 +99,6 @@ GUILD_IDS=[int(GUILD_ID)]
 INVERVAL_LOOP=900
 
 
-
-
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("json/sales.json")
 bot.sales_updated = None
@@ -134,13 +132,14 @@ async def on_ready():
 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='unsigned_algorithms'))
 
+
 def embed_minting_order(embed, minting_data):
     minting_order, minting_time = minting_data
     dt = timestamp_to_datetime(minting_time)
 
     embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"`{minting_order}/{MAX_AMOUNT+1}` ({dt.date()})", inline=False)
 
-def add_sales(embed, sales):
+def add_sales_to_embed(embed, sales):
 
     sales_value=""
 
@@ -1443,7 +1442,7 @@ async def sell(ctx: SlashContext, number: str, price: str):
         embed_num_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url_from_file(asset_name)
-        print(image_url)
+
         if image_url:
             embed.set_image(url=image_url)
 
@@ -1662,7 +1661,7 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
 
             if past_sales:
-                add_sales(embed, sales_by_date)
+                add_sales_to_embed(embed, sales_by_date)
 
         embed_num_props(embed, unsigs_data)
 
@@ -1678,7 +1677,7 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
             try:
                 image_path = f"img/animation_{number}.gif"
                 
-                await gen_animation(number, mode=animation)
+                await gen_animation(number, mode=animation, backwards=True)
 
                 image_file = discord.File(image_path, filename="image.gif")
                 if image_file:
@@ -2099,7 +2098,7 @@ async def minted(ctx: SlashContext, index: str):
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
 
             if past_sales:
-                add_sales(embed, sales_by_date)
+                add_sales_to_embed(embed, sales_by_date)
 
         embed_num_props(embed, unsigs_data)
 
@@ -2239,7 +2238,7 @@ async def publish_last_messages():
 
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
-
+    # === fetch sales data ===
     try:
         sales_data = await aggregate_data_from_marketplaces(sold=True)
     except:
@@ -2268,6 +2267,7 @@ async def fetch_data():
                     except:
                         print("Tweeting sales FAILED!")
     
+    # === fetch offers data ===
     try:
         offers_data = await aggregate_data_from_marketplaces(sold=False)
     except:
@@ -2277,6 +2277,7 @@ async def fetch_data():
             bot.offers = offers_data
             bot.offers_updated = datetime.utcnow()
 
+    # === fetch new certificates ===
     try:
         certificates = load_json("json/certificates.json")
 
@@ -2301,6 +2302,7 @@ async def fetch_data():
 
     print("Updated:", datetime.now()) 
 
-# running bot in loop
-bot.run(TOKEN)
+
+if __name__ == "__main__":
+    bot.run(TOKEN)
 
