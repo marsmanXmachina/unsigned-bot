@@ -6,14 +6,13 @@ from unsigned_bot.marketplaces.cnft import fetch_data_from_marketplace
 from unsigned_bot.marketplaces.tokhun import get_data_from_marketplace
 import unsigned_bot.marketplaces.jpgstore as jpgstore
 from unsigned_bot.constants import POLICY_ID
-from unsigned_bot.urls import TOKHUN_API_URL, CNFT_API_URL
 
 
 async def aggregate_data_from_marketplaces(sold=False):
     data = list()
 
     try:
-        assets_cnft = await fetch_data_from_marketplace(CNFT_API_URL, "unsigned_algorithms", sold)
+        assets_cnft = await fetch_data_from_marketplace("unsigned_algorithms", sold)
     except:
         print(f"Can not fetch data from cnft.io")
     else:
@@ -21,7 +20,7 @@ async def aggregate_data_from_marketplaces(sold=False):
             data.extend(assets_cnft)
 
     try:
-        assets_tokhun = await get_data_from_marketplace(TOKHUN_API_URL, POLICY_ID, sold)
+        assets_tokhun = await get_data_from_marketplace(POLICY_ID, sold)
     except:
         print(f"Can not fetch data from tokhun.io")
     else:

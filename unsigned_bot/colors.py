@@ -305,7 +305,7 @@ def rgb_2_hex(rgb: tuple):
     return "#{:02x}{:02x}{:02x}".format(*rgb)
 
 def get_color_frequencies(idx: str) -> list:
-    unsigs_colors = load_json(f"{ROOT_DIR}/json/color_frequencies.json")
+    unsigs_colors = load_json(f"{ROOT_DIR}/data/json/color_frequencies.json")
     color_frequencies = unsigs_colors.get(str(idx))
     return {tuple([int(n) for n in re.findall('[0-9]+', k)]): v for k,v in color_frequencies.items()}
 

@@ -5,18 +5,17 @@ Module for fetching data from tokhun.io marketplace
 import requests
 from ratelimit import limits
 
-from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.parsing import add_num_props
-from unsigned_bot import ROOT_DIR
-
+from unsigned_bot.urls import TOKHUN_API_URL
 
 MARKETPLACE = "tokhun"
 
-async def get_data_from_marketplace(base_url, policy_id: str, sold=False) -> list:
+
+async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
     if sold:
-        url = f"{base_url}/sold"
+        url = f"{TOKHUN_API_URL}/sold"
     else:
-        url = f"{base_url}/live"
+        url = f"{TOKHUN_API_URL}/live"
     
     if policy_id:
         url += f"/{policy_id}"

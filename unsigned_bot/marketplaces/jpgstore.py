@@ -36,13 +36,16 @@ def parse_data(assets: list, sold: bool) -> list:
         asset_parsed['price'] = asset.get("price_lovelace")
         asset_parsed["id"] = asset.get("asset")
         asset_parsed['marketplace'] = MARKETPLACE
-        asset_parsed["sold"] = True if asset.get("is_confirmed") else False
-
+        
         if sold:
-            date = asset.get("purchased_at")
+            date = asset.get("confirmed_at")
+            if not date:
+                continue
             asset_parsed["date"] = datetime_to_timestamp(date)
+            asset_parsed["sold"] = True
         else:
             asset_parsed["type"] = "listing"
+            asset_parsed["sold"] = False
 
         parsed.append(asset_parsed)
 

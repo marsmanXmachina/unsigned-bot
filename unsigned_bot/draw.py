@@ -31,7 +31,7 @@ STD = DIM/6
 
 
 def load_unsig_data(idx):
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
     return unsigs.get(str(idx))
 
 def norm(x , mean , std):
@@ -318,7 +318,7 @@ async def gen_subpattern(idx):
 
 async def gen_grid(unsigs: list, cols):
 
-    unsigs_data = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs_data = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     num_unsigs = len(unsigs)
     if cols > num_unsigs:
@@ -460,7 +460,7 @@ def delete_image_files(path, suffix="png"):
 
 async def gen_grid_with_matches(best_matches):
 
-    unsigs_data = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs_data = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     padding = 50
     margin = 2

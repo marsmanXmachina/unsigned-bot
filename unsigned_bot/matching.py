@@ -29,7 +29,7 @@ def choose_best_matches(number: str, matches: dict) -> dict:
 def match_unsig(number: str, numbers: list) -> dict:
     matches = defaultdict(list)
 
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     idx = int(number)
     if idx == 0:
@@ -232,7 +232,7 @@ def rotate_layers(layers: list, rotation_diff: str) -> list:
 
 
 def get_similar_unsigs(number, numbers, structural=True):
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     similar_unsigs = defaultdict(list)
 

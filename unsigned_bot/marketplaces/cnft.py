@@ -6,16 +6,17 @@ import copy
 import asyncio
 import aiohttp
 
-from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.time_util import datetime_to_timestamp
 from unsigned_bot.parsing import add_num_props
-from unsigned_bot import ROOT_DIR
+from unsigned_bot.urls import CNFT_API_URL
 
 MARKETPLACE = "cnft"
 
 
-async def fetch_data_from_marketplace(url, project_name: str, sold=False) -> list:
+async def fetch_data_from_marketplace(project_name: str, sold=False) -> list:
     
+    url = CNFT_API_URL
+
     payload = {
         "project": project_name,
         "page": 1,

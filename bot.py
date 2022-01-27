@@ -6,6 +6,7 @@ import numpy as np
 from datetime import datetime
 import asyncio
 from collections import Counter
+import inflect
 
 import discord
 from discord.ext import commands
@@ -16,7 +17,7 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 from unsigned_bot.utility.files_util import load_json, save_json
 from unsigned_bot.utility.time_util import timestamp_to_datetime, get_interval_from_period
 from unsigned_bot.utility.price_util import get_min_prices, get_average_price
-from unsigned_bot.embedding import *
+
 from unsigned_bot.fetch import (
     get_new_certificates,
     get_ipfs_url_from_file,
@@ -85,42 +86,44 @@ from unsigned_bot import ROOT_DIR
 from dotenv import load_dotenv
 load_dotenv() 
 
+
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PATH = f"{FILE_DIR}/img"
 
 TOKEN = os.getenv('BOT_TOKEN')
-
-SALES_CHANNEL=os.getenv('SALES_CHANNEL')
-SALES_CHANNEL_ID = int(os.getenv('SALES_CHANNEL_ID'))
-GUILD_NAME = os.getenv('GUILD_NAME')
-GUILD_ID = os.getenv('GUILD_ID')
-GUILD_IDS=[int(GUILD_ID)]
-
 INVERVAL_LOOP=900
+
+# GUILD_NAME = "unsigned_algorithms"
+# GUILD_ID = 843043397526093885
+# SALES_CHANNEL_ID = 860188673239416862
+
+
+GUILD_NAME = "UnsignedBots"
+GUILD_ID = 880769226422501436
+SALES_CHANNEL_ID = 881188219092357180
+
+GUILD_IDS = [GUILD_ID]
 
 
 bot = commands.Bot(command_prefix='!', help_command=None)
-bot.sales = load_json("json/sales.json")
+bot.sales = load_json("data/json/sales.json")
 bot.sales_updated = None
 bot.offers = None
 bot.offers_updated = None
-bot.certs = load_json("json/certificates.json")
+bot.certs = load_json("data/json/certificates.json")
 bot.certs_updated = None
 
-try:
-    bot.twitter_api = create_twitter_api()
-except:
-    bot.twitter_api = None
-    print("Can not create Twitter API!")
+bot.twitter_api = create_twitter_api()
 
-slash = SlashCommand(bot, sync_commands=True)
+
+slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
 
 @bot.event
 async def on_ready():
     if not fetch_data.is_running():
         fetch_data.start()
     
-    print("guilds", bot.guilds)
+    print("bot guilds", bot.guilds)
 
     bot.guild = discord.utils.find(lambda g: g.name == GUILD_NAME, bot.guilds)
 
@@ -133,13 +136,13 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='unsigned_algorithms'))
 
 
-def embed_minting_order(embed, minting_data):
+def add_minting_order(embed, minting_data):
     minting_order, minting_time = minting_data
     dt = timestamp_to_datetime(minting_time)
 
     embed.add_field(name=f"{EMOJI_NUMBERS} Minting order", value=f"`{minting_order}/{MAX_AMOUNT+1}` ({dt.date()})", inline=False)
 
-def add_sales_to_embed(embed, sales):
+def add_sales(embed, sales):
 
     sales_value=""
 
@@ -153,11 +156,11 @@ def add_sales_to_embed(embed, sales):
 
     embed.add_field(name=f"{EMOJI_SHOPPINGBAGS} Past sales", value=sales_value, inline=False)
 
-def embed_num_props(embed, unsigs_data):
+def add_num_props(embed, unsigs_data):
     total_props = unsigs_data.get("num_props")
     embed.add_field(name="Total properties", value=f"This unsig has **{total_props}** properties", inline=False)
 
-def embed_props(embed, unsigs_data):
+def add_props(embed, unsigs_data):
     properties = unsigs_data.get("properties")
 
     colors = properties.get("colors")
@@ -211,9 +214,9 @@ async def embed_metadata(metadata):
 
     return embed
 
-def embed_subpattern(embed, number:str):
+def add_subs(embed, number:str):
     try:
-        unsigs_subpattern = load_json("json/subpattern.json")
+        unsigs_subpattern = load_json("data/json/subpattern.json")
     except:
         print("Can not open subpatterns.")
     else:
@@ -265,7 +268,7 @@ def add_subpattern(embed, unsig_data):
     embed.add_field(name = f"{EMOJI_DNA} Subpattern {EMOJI_DNA}", value=f"`{subpattern_str}`", inline=False)
 
 
-    subs_counted = load_json("json/subs_counted.json")
+    subs_counted = load_json("data/json/subs_counted.json")
     pattern_for_search = list(subpattern_names.values())
 
     pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
@@ -282,153 +285,6 @@ def add_subpattern(embed, unsig_data):
 
     embed.add_field(name = f"{EMOJI_LINK} Pattern combo {EMOJI_LINK}", value=f"`{pattern_combo_str}`\n{frequency_str}", inline=False)
     
-
-def embed_marketplaces():
-    title = f"{EMOJI_SHOPPINGBAGS} Where to buy? {EMOJI_SHOPPINGBAGS}"
-    description="Places to buy your first unsig..."
-    color=discord.Colour.dark_blue()
-
-    embed = discord.Embed(title=title, description=description, color=color)
-
-    marketplaces_str = ""
-    for marketplace, marketplace_url in MARKETPLACES.items():
-        marketplace_str = f"{EMOJI_ARROW_RIGHT} [{marketplace}]({marketplace_url})\n"
-        marketplaces_str += marketplace_str
-
-    embed.add_field(name=f"Marketplaces", value=marketplaces_str, inline=False)
-
-    escrows_str = ""
-    for escrow, escrow_url in DISCORD_ESCROWS.items():
-        escrow_str = f"{EMOJI_ARROW_RIGHT} [{escrow}]({escrow_url})\n"
-        escrows_str += escrow_str
-
-    escrow_rules_str = "`=> Don't trust, verify!\n=> Minimize steps where trust is needed.\n=> Minimize potential loss in worst case scenario.`"
-    
-    embed.add_field(name=f"{EMOJI_WARNING} Be careful when using escrow {EMOJI_WARNING}", value=escrow_rules_str, inline=False)
-
-    embed.add_field(name=f"Escrows on discord server", value=escrows_str, inline=False)
-
-    embed.set_footer(text=f"The server has no affiliation with the marketplace nor listed prices.\n\nAlways check policy id:\n{POLICY_ID}")
-
-    return embed
-
-def embed_whales():
-    title = f"{EMOJI_WHALE} About 'whales' {EMOJI_WHALE}"
-    description="They're NOT an alien species..."
-    color=discord.Colour.blue()
-
-    TWEETS = {
-        "Brainpicking an early whale": "https://twitter.com/unsigned_algo/status/1445531270302212102?s=21",
-        "Skin in the game": "https://twitter.com/unsigned_algo/status/1445204554564268040?s=21",
-        "Worries about dumping": "https://twitter.com/unsigned_algo/status/1445205162981683200?s=21"
-    }
-
-    embed = discord.Embed(title=title, description=description, color=color)
-
-    tweets_str = ""
-
-    for title, link in TWEETS.items():
-        tweets_str += f"=> ['{title}']({link})\n"
-
-    embed.add_field(name=f"Some interesting tweets...", value=tweets_str, inline=False)
-
-    return embed
-
-def embed_rarity():
-    title = f"{EMOJI_SNOWFLAKE} About rarity {EMOJI_SNOWFLAKE}"
-    description="You aren't as unique as you think..."
-    color=discord.Colour.blue()
-
-    embed = discord.Embed(title=title, description=description, color=color)
-
-    RARITY_RESOURCES = {
-        "Statistics and rare bananas": "https://discord.com/channels/843043397526093885/843043398592233485/873911353381892136",
-        "Kelumax Repository": "https://drive.google.com/drive/folders/1z8J1AsrLlEJ6WnLj2-IbgFvfLpjx1H8X?usp=sharing"
-    }
-
-    info_str = ""
-    for name, link in RARITY_RESOURCES.items():
-        info_str += f"{EMOJI_ARROW_RIGHT} [{name}]({link})\n"
-
-    embed.add_field(name=f"{EMOJI_CERT} Resources {EMOJI_CERT}", value=info_str, inline=False)
-
-
-    RARITY_TOOLS = {
-        "NFT RARITY": "https://nftrarity.is/#/unsigned_algorithms"
-    }
-
-    tools_str = ""
-    for name, link in RARITY_TOOLS.items():
-        tools_str += f"{EMOJI_ARROW_RIGHT} [{name}]({link})\n"
-
-    embed.add_field(name=f"{EMOJI_GEAR} Tools {EMOJI_GEAR}", value=tools_str, inline=False)
-
-    return embed
-
-def embed_v2():
-    title = f"{EMOJI_CROWN} WEN V2??? {EMOJI_CROWN}"
-    description="Patience you must have..."
-    color=discord.Colour.dark_magenta()  
-
-    embed = discord.Embed(title=title, description=description, color=color)
-
-    quote_str = "WHEN ANNOUNCEMENTS?\nHOW WILL US HOLDERS BENEFIT?\nWHAT IS THE UTILITY?..."
-    embed.add_field(name=f"Questions from 'The King'", value=quote_str, inline=False)
-
-    v2_tweet_url = "https://twitter.com/unsigned_algo/status/1445343171496398853?s=21"
-    answer_str = f"[What v2 is about?]({v2_tweet_url})"
-    embed.add_field(name=f"Answer from 'The Great'", value=answer_str, inline=False)
-
-    return embed
-
-def embed_gen_unsig():
-    title = f"{EMOJI_PAINTBRUSH} Generate your unsig {EMOJI_PAINTBRUSH}"
-    description="In the footsteps of Sol LeWitt..."
-    color=discord.Colour.magenta()
-
-    embed = discord.Embed(title=title, description=description, color=color)
-
-    video_url = "https://www.youtube.com/watch?v=lvTAjcLaQjU"
-    embed.add_field(name="Wanna generate your unsig from onchain data?", value=f"{EMOJI_ARROW_RIGHT} Follow the instructions in [this video]({video_url}).\n", inline=False)
-
-    ingredients_str = ""
-    ingredients = ["metadata of unsig00000", "metadata of your unsig", "python environment / jupyter notebook"]
-
-    for ingredient in ingredients:
-        ingredients_str += f" {EMOJI_ARROW_RIGHT} {ingredient} \n"
-
-    embed.add_field(name=f"What do you need?", value=ingredients_str, inline=False)
-
-    embed.add_field(name=f"{EMOJI_BULB} Bot Tip", value="Use my `/metadata` command to get the data you need", inline=False)
-
-    return embed
-
-def embed_treasury():
-    title = f"{EMOJI_MONEYBAG} Treasury {EMOJI_MONEYBAG}"
-    description="administered by the unsigned_DAO"
-    color=discord.Colour.orange()
-
-    embed = discord.Embed(title=title, description=description, color=color)
-
-    pool_link = f"{POOL_PM_URL}/{TREASURY_ADDRESS}"
-    cardanoscan_link = f"{CARDANOSCAN_URL}/address/{TREASURY_ADDRESS}"
-    wallet_str = f"view on [pool.pm]({pool_link})\nview on [cardanoscan.io]({cardanoscan_link})"
-    embed.add_field(name=f"Wallet", value=wallet_str, inline=False)
-
-    balance = get_wallet_balance(TREASURY_ADDRESS)
-    embed.add_field(name=f"Current Balance", value=f"`₳{balance/1000000:,.0f}`", inline=False)
-
-    return embed
-
-def embed_policy():
-    title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
-    description="The official one and only..."
-    color=discord.Colour.orange()
-
-    embed = discord.Embed(title=title, description=description, color=color)
-    embed.add_field(name=f"Always check the policy ID", value=f"`{POLICY_ID}`", inline=False)
-
-    return embed
 
 def embed_offers(assets_ordered: dict):
     title = f"{EMOJI_BROOM} Unsigs Floor {EMOJI_BROOM}"
@@ -671,7 +527,7 @@ def embed_siblings(number, siblings, selected, offers, cols=2):
 def embed_pattern_combo(pattern_found: list, search_input: list, to_display: list, cols=3):
     num_found = len(pattern_found)
 
-    subs_frequencies = load_json("json/subs_frequencies.json")
+    subs_frequencies = load_json("data/json/subs_frequencies.json")
     search_formatted = dict(Counter(search_input))
    
     pattern_str = " + \n".join([f"{amount} x {pattern}" for pattern, amount in search_formatted.items()])
@@ -808,28 +664,6 @@ def embed_color_ranking():
 
     return embed
 
-# @slash.slash(
-#     name="fund", 
-#     description="message to raise funds", 
-#     guild_ids=GUILD_IDS
-# )
-# async def fund(ctx: SlashContext):
-        
-#     title = f"\U0001F378 Unsigned, not stirred \U0001F378"
-#     description="My name is 007. unsig007. What's next? You decide..."
-#     color=discord.Colour.dark_blue()
-
-#     embed = discord.Embed(title=title, description=description, color=color)
-
-#     embed.add_field(name="Vote for the next task with emoji number", value="You can vote for multiple tasks", inline=False)
-#     embed.add_field(name="Task \u0031", value="Feed twitter with unsigs", inline=False)
-#     embed.add_field(name="Task \u0032", value="Alert if #unsig for sale", inline=False)
-#     embed.add_field(name="Task \u0033", value="Notification if potential buyer for own unsig", inline=False)
-#     embed.add_field(name="Task \u0034", value="Data feed from marketplace, e.g. floor prices", inline=False)
-
-#     embed.set_footer(text=f"\nDon't forget to put some ₳ in my pockets!")
-    
-#     await ctx.send(embed=embed)
 
 # @slash.slash(
 #     name="firework", 
@@ -837,7 +671,7 @@ def embed_color_ranking():
 #     guild_ids=GUILD_IDS
 # )
 # async def firework(ctx: SlashContext):
-#     title = f"{EMOJI_PARTY} Quantum of Alonzo {EMOJI_PARTY}"
+#     title = f"{EMOJI_PARTY} Quantum of v2 {EMOJI_PARTY}"
 #     description="A new era begins..."
 #     color=discord.Colour.purple()
 
@@ -846,78 +680,6 @@ def embed_color_ranking():
 #     embed.set_image(url="https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif")
 
 #     await ctx.send(embed=embed)
-
-
-@slash.slash(
-    name="faq", 
-    description="Everything you should know about unsigs", 
-    guild_ids=GUILD_IDS,
-    options=[
-        create_option(
-            name="topics",
-            description="Choose topic",
-            required=True,
-            option_type=3,
-            choices=[
-                create_choice(
-                    name="Where to buy?",
-                    value="buy_unsig"
-                ),
-                create_choice(
-                    name="Policy ID",
-                    value="policy_id"
-                ),
-                create_choice(
-                    name="About whales",
-                    value="whales"
-                ),
-                create_choice(
-                    name="About rarity",
-                    value="rarity"
-                ),
-                create_choice(
-                    name="WEN V2?",
-                    value="v2"
-                ),
-                create_choice(
-                    name="Generate unsig",
-                    value="gen_unsig"
-                ),
-                create_choice(
-                    name="Treasury unsigned_DAO",
-                    value="treasury"
-                )
-            ]
-        )
-    ]
-)
-async def faq(ctx: SlashContext, topics: str):
-    if not topics:
-        await ctx.send(content=f"Please choose a topic...")
-        return
-    else:
-        if topics == "buy_unsig":
-            embed = embed_marketplaces()
-
-        if topics == "policy_id":
-            embed = embed_policy()
-
-        if topics == "whales":
-            embed = embed_whales()
-
-        if topics == "rarity":
-            embed = embed_rarity()
-
-        if topics == "v2":
-            embed = embed_v2()
-
-        if topics == "gen_unsig":
-            embed = embed_gen_unsig()
-
-        if topics == "treasury":
-            embed = embed_treasury()
-        
-        await ctx.send(embed=embed)
 
 @slash.slash(
     name="verse", 
@@ -931,19 +693,18 @@ async def verse(ctx: SlashContext):
 
     embed = discord.Embed(title=title, description=description, color=color) 
 
-    verse = """  
-Two distributions for the algorithm in numpy
-Three fundamental colours which set the tone
-Four numbers for the values to multiply
-Four rotations as the quarters of a circle have shown
-
-In the unsig land, 
-where all combined layers lie...
-One unsig to rule them all, 
-One unsig to find them
-One unsig to bring them all, 
-and in its darkness bind them
-    """
+    verse = """Two distributions for the algorithm in numpy
+        Three fundamental colours which set the tone
+        Four numbers for the values to multiply
+        Four rotations as the quarters of a circle have shown
+        
+        In the unsig land, 
+        where all combined layers lie...
+        One unsig to rule them all, 
+        One unsig to find them
+        One unsig to bring them all, 
+        and in its darkness bind them
+        """
     embed.add_field(name="One unsig to rule them all", value=f"{verse}", inline=False)
 
     image_url = await get_ipfs_url_from_file("unsig00000")
@@ -996,6 +757,10 @@ BOT_COMMANDS = {
         "pattern-combo": {
             "syntax": "/pattern-combo",
             "hint": "count unsigs with given pattern combo"
+        },
+        "forms": {
+            "syntax": "/forms",
+            "hint": "show unsigs with given form"            
         }
     },
     "colors": {
@@ -1437,9 +1202,9 @@ async def sell(ctx: SlashContext, number: str, price: str):
 
         embed.add_field(name=f"{EMOJI_MONEYBAG} Price", value=price_str, inline=True)
 
-        embed_minting_order(embed, minting_data)
+        add_minting_order(embed, minting_data)
 
-        embed_num_props(embed, unsigs_data)
+        add_num_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url_from_file(asset_name)
 
@@ -1476,7 +1241,7 @@ async def cert(ctx: SlashContext, number: str):
     else:
         number = str(int(number))
 
-        certificates = load_json("json/certificates.json")
+        certificates = load_json("data/json/certificates.json")
         num_certificates = len(certificates)
 
         data = get_certificate_data_by_number(number, certificates)
@@ -1558,6 +1323,64 @@ async def colors(ctx: SlashContext, number: str):
             return
         else:
             await ctx.send(file=image_file, embed=embed)
+
+@slash.slash(
+    name="forms", 
+    description="show unsigs with given form", 
+    guild_ids=GUILD_IDS,
+    options=[
+        create_option(
+            name="form",
+            description="visible pattern of unsig",
+            required=True,
+            option_type=3,
+            choices=[create_choice(name=name, value=name) for name in SUBPATTERN_NAMES]
+        )
+    ]
+)
+async def forms(ctx: SlashContext, form: str):
+        
+    if ctx.channel.name == "general":
+        await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        return
+    
+    subs_advanced = load_json("data/json/subs_advanced.json")
+
+    form_selected = subs_advanced.get(form)
+    if not form_selected:
+        if form == "basketball":
+            clean_form = subs_advanced.get("bulb").get("diagonal")
+        if form == "butterfly":
+            clean_form = subs_advanced.get("window").get("bulb")
+    else:
+        clean_form = form_selected.get("clean")
+
+    num_found = len(clean_form)
+
+    emoji = FORMS_EMOJIS.get(form)
+    p = inflect.engine()
+    form_name = p.plural(form)
+    if form == "rivers" or form == "veins":
+        form_name = form
+
+    title = f"{emoji} {form_name} {emoji}"
+    description=f"**{num_found}** clean {form_name} in whole collection"
+    color=discord.Colour.dark_blue()
+
+    embed = discord.Embed(title=title, description=description, color=color)
+
+    embed.set_footer(text=f"\nDiscord Bot by Mar5man")
+
+    try:
+        image_path = f"img/{form}.jpg" 
+        image_file = discord.File(image_path, filename="image.jpg")
+        if image_file:
+            embed.set_image(url="attachment://image.jpg")
+    except:
+        await ctx.send(content=f"I can't display unsig forms.")
+        return
+    else:
+        await ctx.send(file=image_file, embed=embed)  
 
 
 @slash.slash(
@@ -1654,18 +1477,18 @@ async def unsig(ctx: SlashContext, number: str, animation=False):
 
         embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
-        embed_minting_order(embed, minting_data)
+        add_minting_order(embed, minting_data)
        
         if bot.sales:
             past_sales = filter_sales_by_asset(bot.sales, asset_name)
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
 
             if past_sales:
-                add_sales_to_embed(embed, sales_by_date)
+                add_sales(embed, sales_by_date)
 
-        embed_num_props(embed, unsigs_data)
+        add_num_props(embed, unsigs_data)
 
-        embed_props(embed, unsigs_data)
+        add_props(embed, unsigs_data)
 
         color_frequencies = get_color_frequencies(number)
         add_output_colors(embed, color_frequencies, num_colors=6)
@@ -1829,7 +1652,7 @@ async def pattern_combo(ctx: SlashContext, first_pattern: str, second_pattern: s
 
     pattern_for_search = [p for p in pattern if p in SUBPATTERN_NAMES]
 
-    subs_counted = load_json("json/subs_counted.json")
+    subs_counted = load_json("data/json/subs_counted.json")
 
     pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
 
@@ -2031,7 +1854,7 @@ async def evo(ctx: SlashContext, number: str, extended=False):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        embed_subpattern(embed, number)
+        add_subs(embed, number)
 
         try:
             image_path = f"img/evolution_{number}.png"
@@ -2091,18 +1914,18 @@ async def minted(ctx: SlashContext, index: str):
 
         embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
-        embed_minting_order(embed, minting_data)
+        add_minting_order(embed, minting_data)
        
         if bot.sales:
             past_sales = filter_sales_by_asset(bot.sales, asset_name)
             sales_by_date = sort_sales_by_date(past_sales, descending=True)
 
             if past_sales:
-                add_sales_to_embed(embed, sales_by_date)
+                add_sales(embed, sales_by_date)
 
-        embed_num_props(embed, unsigs_data)
+        add_num_props(embed, unsigs_data)
 
-        embed_props(embed, unsigs_data)
+        add_props(embed, unsigs_data)
 
         image_url = await get_ipfs_url_from_file(asset_name)
 
@@ -2159,6 +1982,7 @@ async def owner(ctx: SlashContext, number: str):
             await ctx.send(embed=embed)
         else:
             await ctx.send(content=f"Sorry...I can't get the data for `{asset_name}` at the moment!")
+
 
 async def post_sales(sales):
     try:
@@ -2238,7 +2062,8 @@ async def publish_last_messages():
 
 @loop(seconds=INVERVAL_LOOP)
 async def fetch_data():
-    # === fetch sales data ===
+    """Background tasks for fetching and posting data"""
+    # === fetch and post new sales data ===
     try:
         sales_data = await aggregate_data_from_marketplaces(sold=True)
     except:
@@ -2251,9 +2076,9 @@ async def fetch_data():
 
             if new_sales:
                 bot.sales.extend(new_sales)
-                save_json("json/sales.json", bot.sales)
+                save_json("data/json/sales.json", bot.sales)
         
-                new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000 * 2)
+                new_sales = filter_by_time_interval(new_sales, INVERVAL_LOOP * 1000)
 
                 if bot.guild.name == "unsigned_algorithms":
                     await asyncio.sleep(2)
@@ -2277,21 +2102,21 @@ async def fetch_data():
             bot.offers = offers_data
             bot.offers_updated = datetime.utcnow()
 
-    # === fetch new certificates ===
+    # === fetch and post new certificates ===
     try:
-        certificates = load_json("json/certificates.json")
+        certificates = load_json("data/json/certificates.json")
 
         new_certificates = get_new_certificates(certificates)
         print(len(new_certificates), "new certificates found")
         
         if new_certificates:
             bot.certs.update(new_certificates)
-            save_json("json/certificates.json", bot.certs)
+            save_json("data/json/certificates.json", bot.certs)
 
             if bot.guild.name == "unsigned_algorithms":
                 num_certificates = len(bot.certs.keys())
 
-                new_certificates = filter_certs_by_time_interval(new_certificates, INVERVAL_LOOP * 1000 * 2)
+                new_certificates = filter_certs_by_time_interval(new_certificates, INVERVAL_LOOP * 1000)
                 
                 await asyncio.sleep(2)
                 await post_certs(new_certificates, num_certificates)
@@ -2303,6 +2128,17 @@ async def fetch_data():
     print("Updated:", datetime.now()) 
 
 
+# == load cogs ==
+for folder in os.listdir("unsigned_bot/cogs"):
+    if os.path.exists(os.path.join("unsigned_bot/cogs", folder, "cog.py")):
+        bot.load_extension(f"unsigned_bot.cogs.{folder}.cog")
+
+# bot.load_extension(f"unsigned_bot.cogs.cog")
+
+# def main():
+#     pass
+
 if __name__ == "__main__":
+    
     bot.run(TOKEN)
 

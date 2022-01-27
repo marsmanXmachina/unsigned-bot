@@ -20,9 +20,6 @@ from unsigned_bot import ROOT_DIR
 from dotenv import load_dotenv
 load_dotenv() 
 
-POLICY_ID = os.getenv('POLICY_ID')
-ASSESSMENTS_POLICY_ID = os.getenv('ASSESSMENTS_POLICY_ID')
-
 BLOCKFROST_API_TOKEN = os.getenv("BLOCKFROST_API_TOKEN")
 BLOCKFROST_API_HEADERS = {
     "project_id": BLOCKFROST_API_TOKEN
@@ -86,7 +83,7 @@ def get_tx_timestamp(tx_id):
 
 
 async def get_ipfs_url_from_file(asset_name):
-    ipfs_urls = load_json(f"{ROOT_DIR}/json/ipfs_urls.json")
+    ipfs_urls = load_json(f"{ROOT_DIR}/data/json/ipfs_urls.json")
     return ipfs_urls.get(asset_name, None)
 
 
@@ -155,16 +152,16 @@ def get_metadata_from_asset_name(asset_name):
     return response.get("metadata")
 
 def get_unsigs_data(idx:str):
-    unsigs_data = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs_data = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
     return unsigs_data.get(idx, None)
 
 def get_minting_number(asset_name):
-    minting_order = load_json(f"{ROOT_DIR}/json/minted.json")
+    minting_order = load_json(f"{ROOT_DIR}/data/json/minted.json")
     number = minting_order.index(asset_name) + 1
     return number
 
 def get_minting_data(number: str):
-    unsigs_minted = load_json(f"{ROOT_DIR}/json/unsigs_minted.json")
+    unsigs_minted = load_json(f"{ROOT_DIR}/data/json/unsigs_minted.json")
     
     minting_data = unsigs_minted.get(number)
 

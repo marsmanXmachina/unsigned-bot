@@ -15,7 +15,7 @@ from unsigned_bot import ROOT_DIR
 
 
 def get_asset_id(asset_name: str) -> str:
-    asset_ids = load_json(f"{ROOT_DIR}/json/asset_ids.json")
+    asset_ids = load_json(f"{ROOT_DIR}/data/json/asset_ids.json")
     return asset_ids.get(asset_name, None)
 
 def get_asset_name_from_idx(idx: str) -> str:
@@ -39,7 +39,7 @@ def get_numbers_from_assets(assets: list) -> list:
     return [get_idx_from_asset_name(asset.get("assetid")) for asset in assets]
 
 def get_asset_name_from_minting_order(idx:str) -> str:
-    minting_order = load_json(f"{ROOT_DIR}/json/minted.json")
+    minting_order = load_json(f"{ROOT_DIR}/data/json/minted.json")
     try:
         idx = int(idx)
         asset_name = minting_order[idx-1]
@@ -158,7 +158,7 @@ def parse_sale(sale_data: dict) -> tuple:
     return (marketplace_name, num_props, price, date)
 
 def add_num_props(assets: list) -> list:
-    unsigs = load_json(f"{ROOT_DIR}/json/unsigs.json")
+    unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     for asset in assets:
         asset_name = asset.get("assetid")
