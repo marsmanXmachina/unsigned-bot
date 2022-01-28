@@ -6,6 +6,7 @@ import os
 import requests
 import tweepy
 
+from unsigned_bot import IMAGE_PATH
 from unsigned_bot.parsing import parse_sale, get_unsig_url, get_idx_from_asset_name
 from unsigned_bot.draw import gen_unsig, delete_image_files
 from unsigned_bot.emojis import *
@@ -14,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv() 
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
-IMAGE_PATH = f"{FILE_DIR}/img"
+
 
 
 def create_twitter_api():
@@ -64,3 +65,4 @@ async def download_image(num, url) -> str:
                 image.write(chunk)
     
     return filename
+    

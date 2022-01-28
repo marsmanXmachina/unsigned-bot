@@ -12,7 +12,7 @@ from unsigned_bot import ROOT_DIR
 
 
 def choose_best_matches(number: str, matches: dict) -> dict:
-
+    """Choose random selection (one unsig per side) from all available matches"""
     best_matches = dict()
 
     for side, side_matches in matches.items():
@@ -27,6 +27,7 @@ def choose_best_matches(number: str, matches: dict) -> dict:
     return best_matches
 
 def match_unsig(number: str, numbers: list) -> dict:
+    """Match unsig with given list of unsigs"""
     matches = defaultdict(list)
 
     unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")

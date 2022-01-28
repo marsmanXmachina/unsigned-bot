@@ -239,9 +239,12 @@ async def gen_evolution(idx, show_single_layers=True, extended=False):
             y_offset += shift
 
     evolution = evolution.rotate(180)
+
     path = f'img/evolution_{idx}.png'
     evolution.save(path)
     evolution.close()
+
+    return path
 
 async def gen_subpattern(idx):
     PADDING = 150
@@ -311,9 +314,12 @@ async def gen_subpattern(idx):
         y_offset += shift
     
     subpattern = subpattern.rotate(180)
+
     path = f'img/subpattern_{idx}.png'
     subpattern.save(path)
     subpattern.close()
+
+    return path
 
 
 async def gen_grid(unsigs: list, cols):
@@ -339,8 +345,8 @@ async def gen_grid(unsigs: list, cols):
     offset_x = offset_y = padding + margin
 
     unsig_idx = 0
-    for row in range(rows):
-        for col in range(cols):
+    for _ in range(rows):
+        for _ in range(cols):
             data = unsigs_data.get(str(unsigs[unsig_idx]))
             image_array = gen_image_array(data)
             image = Image.fromarray(image_array)
@@ -361,6 +367,9 @@ async def gen_grid(unsigs: list, cols):
     
     path = f"img/grid_{unsigs_str}.png"
     grid.save(path)
+    grid.close()
+
+    return path
 
 def v_fade(step=16):
     n = np.zeros((DIM, DIM)).astype(np.uint8)   
@@ -450,7 +459,11 @@ async def gen_animation(idx, mode="fade", backwards=False):
     
     base_layer = images[-1]
 
-    base_layer.save(f"img/animation_{idx}.gif", format="GIF",  append_images=images_faded[1:], save_all=True, duration=durations, loop=0)
+    path = f"img/animation_{idx}.gif"
+    base_layer.save(path, format="GIF",  append_images=images_faded[1:], save_all=True, duration=durations, loop=0)
+    base_layer.close()
+
+    return path
 
 def delete_image_files(path, suffix="png"):
     for file in os.scandir(path):
@@ -506,6 +519,8 @@ async def gen_grid_with_matches(best_matches):
     unsigs_str = best_matches.get("center")
     path = f"img/matches_{unsigs_str}.png"
     grid.save(path)
+    grid.close()
+    return path
 
 async def gen_image_for_tweet(idx):
     unsig_data = load_unsig_data(idx)

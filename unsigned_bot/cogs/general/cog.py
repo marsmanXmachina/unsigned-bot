@@ -8,7 +8,7 @@ from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
 from unsigned_bot.config import GUILD_IDS
-from unsigned_bot.fetch import get_ipfs_url_from_file
+from unsigned_bot.emojis import *
 from .embeds import (
     embed_marketplaces,
     embed_policy,
@@ -22,7 +22,7 @@ from .embeds import (
 
 
 class General(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @cog_ext.cog_slash(
@@ -89,6 +89,7 @@ class General(commands.Cog):
             
             await ctx.send(embed=embed)
 
+
     @cog_ext.cog_slash(
         name="verse", 
         description="One unsig to rule them all...", 
@@ -99,9 +100,22 @@ class General(commands.Cog):
         
         await ctx.send(embed=embed)
     
-    # @cog_ext.cog_slash()
+    @cog_ext.cog_slash(
+        name="firework", 
+        description="A new era begins...", 
+        guild_ids=GUILD_IDS
+    )
+    async def _firework(self, ctx: SlashContext):
+        title = f"{EMOJI_PARTY} Quantum of v2 {EMOJI_PARTY}"
+        description="A new era begins..."
+        color=discord.Colour.purple()
+
+        embed = discord.Embed(title=title, description=description, color=color)
+        embed.set_image(url="https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif")
+
+        await ctx.send(embed=embed)
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(General(bot))
     print(f"general cog loaded")

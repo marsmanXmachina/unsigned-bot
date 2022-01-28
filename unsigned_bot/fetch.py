@@ -151,7 +151,7 @@ def get_metadata_from_asset_name(asset_name):
     response = get_request(url, headers=None)
     return response.get("metadata")
 
-def get_unsigs_data(idx:str):
+def get_unsig_data(idx: str):
     unsigs_data = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
     return unsigs_data.get(idx, None)
 

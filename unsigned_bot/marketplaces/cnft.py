@@ -120,6 +120,9 @@ def parse_data(assets: list, sold=False) -> list:
         asset_parsed = dict()
 
         asset_data = asset.get("asset")
+        if not asset_data:
+            asset_data = asset.get("assets")[0]
+
         asset_parsed["assetid"] = asset_data.get("assetId")
         asset_parsed["price"] = asset.get("price")
         asset_parsed["id"] = asset.get("_id")
@@ -142,3 +145,4 @@ def parse_data(assets: list, sold=False) -> list:
             parsed.append(asset_parsed)
     
     return parsed
+

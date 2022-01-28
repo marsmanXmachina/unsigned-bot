@@ -1,8 +1,9 @@
 """
-Module for cog specific discord embeds
+Module for general cog specific discord embeds
 """
 
 import discord
+from discord import Embed, Colour
 
 from unsigned_bot.fetch import get_wallet_balance, get_ipfs_url_from_file
 from unsigned_bot.constants import POLICY_ID, TREASURY_ADDRESS
@@ -10,13 +11,13 @@ from unsigned_bot.emojis import *
 from unsigned_bot.urls import *
 
 
-def embed_marketplaces():
+def embed_marketplaces() -> Embed:
     """Return discord embed for marketplaces and escrows"""
     title = f"{EMOJI_SHOPPINGBAGS} Where to buy? {EMOJI_SHOPPINGBAGS}"
     description="Places to buy your first unsig..."
-    color=discord.Colour.dark_blue()
+    color=Colour.dark_blue()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
 
     marketplaces_str = ""
     for marketplace, marketplace_url in MARKETPLACES.items():
@@ -39,24 +40,24 @@ def embed_marketplaces():
 
     return embed
 
-def embed_policy():
+def embed_policy() -> Embed:
     """Return discord embed for policy id"""
     title = f"{EMOJI_WARNING} Unsigs Policy ID {EMOJI_WARNING}"
     description="The official one and only..."
-    color=discord.Colour.orange()
+    color=Colour.orange()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
     embed.add_field(name=f"Always check the policy ID", value=f"`{POLICY_ID}`", inline=False)
 
     return embed
 
-def embed_gen_unsig():
+def embed_gen_unsig() -> Embed:
     """Return discord embed for instructions to generate unsig"""
     title = f"{EMOJI_PAINTBRUSH} Generate your unsig {EMOJI_PAINTBRUSH}"
     description="In the footsteps of Sol LeWitt..."
-    color=discord.Colour.magenta()
+    color=Colour.magenta()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
 
     video_url = "https://www.youtube.com/watch?v=lvTAjcLaQjU"
     embed.add_field(name="Wanna generate your unsig from onchain data?", value=f"{EMOJI_ARROW_RIGHT} Follow the instructions in [this video]({video_url}).\n", inline=False)
@@ -72,13 +73,13 @@ def embed_gen_unsig():
 
     return embed
 
-def embed_whales():
+def embed_whales() -> Embed:
     """Return discord embed for whales topic"""
     title = f"{EMOJI_WHALE} About 'whales' {EMOJI_WHALE}"
     description="They're NOT an alien species..."
-    color=discord.Colour.blue()
+    color=Colour.blue()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
 
     TWEETS = {
         "Brainpicking an early whale": "https://twitter.com/unsigned_algo/status/1445531270302212102?s=21",
@@ -94,13 +95,13 @@ def embed_whales():
 
     return embed
 
-def embed_rarity():
+def embed_rarity() -> Embed:
     """Return discord embed for rarity topic"""
     title = f"{EMOJI_SNOWFLAKE} About rarity {EMOJI_SNOWFLAKE}"
     description="You aren't as unique as you think..."
-    color=discord.Colour.blue()
+    color=Colour.blue()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
 
     RARITY_RESOURCES = {
         "Statistics and rare bananas": "https://discord.com/channels/843043397526093885/843043398592233485/873911353381892136",
@@ -125,13 +126,13 @@ def embed_rarity():
 
     return embed
 
-def embed_v2():
+def embed_v2() -> Embed:
     """Return discord embed for v2 topic"""
     title = f"{EMOJI_CROWN} WEN V2??? {EMOJI_CROWN}"
     description="Patience you must have..."
-    color=discord.Colour.dark_magenta()  
+    color=Colour.dark_magenta()  
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
 
     quote_str = "WHEN ANNOUNCEMENTS?\nHOW WILL US HOLDERS BENEFIT?\nWHAT IS THE UTILITY?..."
     embed.add_field(name=f"Questions from 'The King'", value=quote_str, inline=False)
@@ -142,13 +143,13 @@ def embed_v2():
 
     return embed
 
-def embed_treasury():
+def embed_treasury() -> Embed:
     """Return discord embed for treasury monitoring"""
     title = f"{EMOJI_MONEYBAG} Treasury {EMOJI_MONEYBAG}"
     description="administered by the unsigned_DAO"
-    color=discord.Colour.orange()
+    color=Colour.orange()
 
-    embed = discord.Embed(title=title, description=description, color=color)
+    embed = Embed(title=title, description=description, color=color)
 
     pool_link = f"{POOL_PM_URL}/{TREASURY_ADDRESS}"
     cardanoscan_link = f"{CARDANOSCAN_URL}/address/{TREASURY_ADDRESS}"
@@ -160,13 +161,13 @@ def embed_treasury():
 
     return embed
 
-async def embed_verse():
+async def embed_verse() -> Embed:
     """Return discord embed with unsig_verse"""
     title = f"{EMOJI_CERT} Unsig verse {EMOJI_CERT}"
     description="..."
-    color=discord.Colour.dark_blue()
+    color=Colour.dark_blue()
 
-    embed = discord.Embed(title=title, description=description, color=color) 
+    embed = Embed(title=title, description=description, color=color) 
 
     verse = """Two distributions for the algorithm in numpy
         Three fundamental colours which set the tone
