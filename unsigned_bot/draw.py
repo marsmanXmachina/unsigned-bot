@@ -5,6 +5,8 @@ Module for generating images and animations
 import os
 import math
 import asyncio
+from typing import List, Optional
+
 import numpy as np
 from PIL import Image, ImageOps, ImageDraw
 
@@ -19,10 +21,10 @@ from unsigned_bot.colors import (
 )
 from unsigned_bot import ROOT_DIR
 
-IMAGE_DIR = "data/img"
 
 BORDER = 10
 
+# == constants from unsig00000 ===
 DIM = 512
 DIM_LIST = list(range(DIM))
 U_RANGE = 4294967293
@@ -43,17 +45,17 @@ def scale_make2d(s, dim):
     two_d = np.tile(scaled, (dim, 1))
     return two_d
 
-#probability and cumulative distribution
+# probability and cumulative distribution
 p_1d = np.array(norm(DIM_LIST, MEAN, STD)).astype(np.uint32)
 c_1d = np.cumsum(p_1d)
 
-#2d arrays
+# 2d arrays of 1d distributions
 p_2d = scale_make2d(p_1d, DIM)
 c_2d = scale_make2d(c_1d, DIM)
 
-#dicts for retrieving values
 DISTS = {'Normal': p_2d, 'CDF': c_2d}
 CHANNELS = {'Red': 0, 'Green': 1, 'Blue': 2}
+
 
 def get_distributions(dim):
     dims = list(range(dim))
@@ -119,7 +121,9 @@ def generate_image(image_array):
 
     return transformed_image
 
-def calc_coeffs(pa, pb):
+def calc_coeffs(pa: List[tuple], pb: List[tuple]):
+    """Calculate coefficients for transformation matrix"""
+    
     matrix = []
     for p1, p2 in zip(pa, pb):
         matrix.append([p1[0], p1[1], 1, 0, 0, 0, -p2[0]*p1[0], -p2[0]*p1[1]])
@@ -322,7 +326,8 @@ async def gen_subpattern(idx):
     return path
 
 
-async def gen_grid(unsigs: list, cols):
+async def gen_grid(unsigs: list, cols: int) -> str:
+    """Return path to image grid"""
 
     unsigs_data = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
@@ -337,8 +342,8 @@ async def gen_grid(unsigs: list, cols):
 
     unsig_width, unsig_height = DIM, DIM
 
-    image_width = (unsig_width+2*margin)*cols + 2*padding
-    image_height = (unsig_height+2*margin)*rows + 2*padding
+    image_width = (unsig_width + 2*margin) * cols + 2*padding
+    image_height = (unsig_height + 2*margin) * rows + 2*padding
 
     grid = Image.new("RGB", (image_width, image_height))
 
@@ -384,9 +389,8 @@ def v_fade(step=16):
 
     return result
 
-def v_blend(width = 16):
-    '''make masks for fading from one image to the next through a vertical sweep.  Does this through numpy slices'''
-              
+def v_blend(width=16):
+      
     n = np.zeros((DIM, DIM)).astype(np.uint8)            
     
     result=[Image.fromarray(n.copy())]
@@ -399,7 +403,7 @@ def v_blend(width = 16):
 
     return result
 
-async def gen_animation(idx, mode="fade", backwards=False):
+async def gen_animation(idx: str, mode="fade", backwards=False):
     unsig_data = load_unsig_data(idx)
 
     props = unsig_data.get("properties")
@@ -442,7 +446,7 @@ async def gen_animation(idx, mode="fade", backwards=False):
         images_faded.extend(new_frames)
 
         duration_frames = [DURATION_FRAME] * len(new_frames)
-        duration_frames[-1] = 1000
+        duration_frames[-1] = 1000 
         durations.extend(duration_frames)
     
     images_faded = images_faded[::-1] #reverse frame order
@@ -471,7 +475,7 @@ def delete_image_files(path, suffix="png"):
             os.unlink(file.path)
 
 
-async def gen_grid_with_matches(best_matches):
+async def gen_grid_with_matches(best_matches: dict):
 
     unsigs_data = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
@@ -515,11 +519,11 @@ async def gen_grid_with_matches(best_matches):
         grid.paste(image, position)
         image.close()
 
-
     unsigs_str = best_matches.get("center")
     path = f"img/matches_{unsigs_str}.png"
     grid.save(path)
     grid.close()
+
     return path
 
 async def gen_image_for_tweet(idx):
@@ -555,6 +559,7 @@ async def gen_unsig(idx, dim):
 
 
 async def gen_color_histogram(idx: str, color_frequencies: dict, sort_colors=False):
+
     if sort_colors:
         frequencies_sorted = sorted(color_frequencies.items(), key=lambda x: x[1], reverse=True)
     else:
@@ -606,3 +611,4 @@ async def gen_color_histogram(idx: str, color_frequencies: dict, sort_colors=Fal
     image.close()
 
     return path
+

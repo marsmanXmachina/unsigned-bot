@@ -1,7 +1,9 @@
 """
 Module for geometry cog specific discord embeds
 """
+
 from collections import Counter
+import inflect
 from discord import Embed, Colour
 
 from unsigned_bot import ROOT_DIR
@@ -33,5 +35,22 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
     if to_display:
         unsigs_str = link_assets_to_grid(to_display, cols)
         embed.add_field(name=f"{EMOJI_ARROW_DOWN} Random selection {EMOJI_ARROW_DOWN}", value=unsigs_str, inline=False)
+
+    return embed
+
+def embed_forms(form: str, num_found: int) -> Embed:
+    """Return discord embed for forms"""
+
+    p = inflect.engine()
+    form_name = p.plural(form)
+    if form == "rivers" or form == "veins":
+        form_name = form
+
+    emoji = FORMS_EMOJIS.get(form)
+    title = f"{emoji} {form_name} {emoji}"
+    description=f"**{num_found}** clean {form_name} in whole collection"
+    color = Colour.dark_blue()
+
+    embed = Embed(title=title, description=description, color=color)
 
     return embed

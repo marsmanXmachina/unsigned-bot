@@ -8,6 +8,7 @@ from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
 from unsigned_bot.config import GUILD_IDS
+from unsigned_bot.log import logger
 from unsigned_bot.emojis import *
 from .embeds import (
     embed_marketplaces,
@@ -21,7 +22,11 @@ from .embeds import (
 )
 
 
-class General(commands.Cog):
+class GeneralCog(commands.Cog, name="General"):
+    """commands for general information"""
+    
+    COG_EMOJI = EMOJI_INFO
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -97,7 +102,6 @@ class General(commands.Cog):
     )
     async def _verse(self, ctx: SlashContext):
         embed = await embed_verse()
-        
         await ctx.send(embed=embed)
     
     @cog_ext.cog_slash(
@@ -117,5 +121,5 @@ class General(commands.Cog):
 
 
 def setup(bot: commands.Bot):
-    bot.add_cog(General(bot))
-    print(f"general cog loaded")
+    bot.add_cog(GeneralCog(bot))
+    logger.debug(f"{GeneralCog.__name__} loaded")

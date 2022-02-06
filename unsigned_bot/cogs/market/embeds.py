@@ -2,6 +2,7 @@
 Module for market cog specific discord embeds
 """
 
+from random import sample
 import discord
 from discord import Embed, Colour
 from typing import Optional
@@ -113,16 +114,26 @@ def embed_related(number: str, related: list[int], selected: list[int], sales: l
 
     return embed
 
-def embed_matches(number: str, matches: list[int], best_matches: list[int], offers: list) -> Embed:
+def embed_matches(number: str, matches: list[int], best_matches: list[int], offers: list, entire_collection=False) -> Embed:
     """Return discord embed for matches on marketplace"""
 
     asset_name = get_asset_name_from_idx(number)
 
     title = f"{EMOJI_PUZZLE} {asset_name} matches {EMOJI_PUZZLE}"
-    description="Available matches on marketplace"
+    if entire_collection:
+        description="Available matches in ENTIRE collection"
+    else:
+        description="Available matches on marketplace"
     color = Colour.dark_blue()
 
     embed = Embed(title=title, description=description, color=color)
+
+    def link_match_to_marketplace(match, offers: list) -> str:
+        offer = get_asset_from_number(match, offers)
+        offer_id = offer.get("id")
+        marketplace = offer.get("marketplace")
+        marketplace_url = get_url_from_marketplace_id(offer_id, marketplace)
+        return f" [#{str(match).zfill(5)}]({marketplace_url}) "
 
     SIDES = ["top", "left", "right", "bottom"]
     for side in SIDES:
@@ -130,14 +141,23 @@ def embed_matches(number: str, matches: list[int], best_matches: list[int], offe
 
         matches_side = matches.get(side, None)
         if matches_side:
+
+            if entire_collection:
+                shuffled = sample(matches_side, len(matches_side))
+                matches_side = shuffled[:9]
+                rest = shuffled[9:] if len(shuffled) > 9 else 0
+
             matches_str=""
             for match in matches_side:
-                offer = get_asset_from_number(match, offers)
-                offer_id = offer.get("id")
-                marketplace = offer.get("marketplace")
-                marketplace_url = get_url_from_marketplace_id(offer_id, marketplace)
-
-                matches_str += f" [#{str(match).zfill(5)}]({marketplace_url}) "
+                if entire_collection:
+                    unsigs_url = get_unsig_url(match)
+                    matches_str += f" [#{str(match).zfill(5)}]({unsigs_url}) "
+                else:
+                    match_str = link_match_to_marketplace(match, offers)
+                    matches_str += match_str
+                    
+            if entire_collection:
+                matches_str += f"...and {len(rest)} more"
         else:
             matches_str="` - `"
         
@@ -152,12 +172,11 @@ def embed_matches(number: str, matches: list[int], best_matches: list[int], offe
     for side in SIDES:
         best_match = best_matches.get(side, None)
         if best_match:
-            offer = get_asset_from_number(best_match, offers)
-            offer_id = offer.get("id")
-            marketplace = offer.get("marketplace")
-            marketplace_url = get_url_from_marketplace_id(offer_id, marketplace)
-
-            best_match_str=f"[#{str(best_match).zfill(5)}]({marketplace_url})"
+            if entire_collection:
+                unsigs_url = get_unsig_url(best_match)
+                best_match_str = f" [#{str(best_match).zfill(5)}]({unsigs_url}) "  
+            else:
+                best_match_str = link_match_to_marketplace(best_match, offers)
         else:
             best_match_str = "` - `"
 
@@ -228,10 +247,6 @@ async def embed_offer(seller: str, price: Optional[str], asset_name: str, unsig_
 
     add_minting_order(embed, minting_data)
     add_num_props(embed, unsig_data)
-
-    image_url = await get_ipfs_url_from_file(asset_name)
-    if image_url:
-        embed.set_image(url=image_url)
 
     embed.set_footer(text=f"\nAlways check policy id:\n{POLICY_ID}")
 

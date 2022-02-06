@@ -54,7 +54,7 @@ def embed_color_ranking() -> Embed:
     return embed
 
 
-def embed_output_colors(number: str, color_frequencies: list) -> Embed:
+def embed_output_colors(number: str, color_frequencies: dict) -> Embed:
     """Return discord embed for output colors"""
 
     asset_name = get_asset_name_from_idx(number)
@@ -71,7 +71,7 @@ def embed_output_colors(number: str, color_frequencies: list) -> Embed:
 
     return embed
 
-def add_output_colors(embed: Embed, color_frequencies: list, num_colors=10):
+def add_output_colors(embed: Embed, color_frequencies: dict, num_colors: int =10):
     """Add output colors to discord embed"""
 
     top_colors = get_top_colors(color_frequencies, num_ranks=num_colors)

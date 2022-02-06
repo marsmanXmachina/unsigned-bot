@@ -7,6 +7,7 @@ import asyncio
 import aiohttp
 
 from unsigned_bot.utility.time_util import datetime_to_timestamp
+from unsigned_bot.log import logger
 from unsigned_bot.parsing import add_num_props
 from unsigned_bot.urls import CNFT_API_URL
 
@@ -45,7 +46,7 @@ async def fetch_data_from_marketplace(project_name: str, sold=False) -> list:
         try:
             responses = await fetch_all(url, payload, pages)
         except:
-            print("Fetching data failed!")
+            logger.warning(f"Fetching data from {MARKETPLACE.upper()} failed")
             return
         else:
             if responses:
@@ -60,7 +61,7 @@ async def fetch_data_from_marketplace(project_name: str, sold=False) -> list:
 
         num_requests += 1
     
-    print(f"{len(assets_total)} assets found at {MARKETPLACE.upper()}!")
+    logger.info(f"{len(assets_total)} assets found at {MARKETPLACE.upper()}")
 
     return assets_total
 

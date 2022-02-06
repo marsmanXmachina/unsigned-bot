@@ -2,6 +2,7 @@ import requests
 
 from unsigned_bot.utility.files_util import save_json
 from unsigned_bot.utility.time_util import datetime_to_timestamp
+from unsigned_bot.log import logger
 from unsigned_bot.parsing import add_num_props
 from unsigned_bot.urls import JPGSTORE_API_URL
 
@@ -16,14 +17,15 @@ async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
     try:
         response = requests.get(url).json()
     except:
-        print("Fetching data failed!")
+        logger.warning(f"Fetching data from {MARKETPLACE.upper()} failed")
         return
     else:
         if isinstance(response, list):
             assets_parsed = parse_data(response, sold)
             assets_extended = add_num_props(assets_parsed)
         
-        print(f"{len(assets_extended)} assets found at {MARKETPLACE.upper()}!")
+        logger.info(f"{len(assets_extended)} assets found at {MARKETPLACE.upper()}")
+        
         return assets_extended
 
 def parse_data(assets: list, sold: bool) -> list:

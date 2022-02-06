@@ -2,8 +2,10 @@
 Module for finding matching unsigs
 """
 
+import os
 import random
 from collections import defaultdict
+from typing import List
 
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.geom_util import get_opposite_side, get_rotations_from_direction
@@ -232,7 +234,7 @@ def rotate_layers(layers: list, rotation_diff: str) -> list:
     return rotated
 
 
-def get_similar_unsigs(number, numbers, structural=True):
+def get_similar_unsigs(number: str, numbers: List[int], structural=True) -> dict:
     unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     similar_unsigs = defaultdict(list)
@@ -303,7 +305,6 @@ def check_structural_similarity(layers1, layers2):
         subpattern1 = get_subpattern(layers1)
         subpattern2 = get_subpattern(layers2)
 
-        # formatted1 = format_subpattern(subpattern1)
         formatted2 = format_subpattern(subpattern2)
 
         subpattern_mutations = get_subpattern_mutations(subpattern1)
@@ -348,3 +349,28 @@ def get_subpattern_mutations(subpattern):
         mutations.append(formatted)
 
     return mutations
+
+def save_matches_to_file(number: str, matches: dict) -> str:
+    """Return path where text file is located"""
+    
+    path = f"{ROOT_DIR}/data/matches_{str(number).zfill(5)}.txt"
+    with open(path, 'w') as f:
+        f.write(f"Matches for unsig{str(number).zfill(5)}\n")
+
+        for side, assets in matches.items():
+            f.write("\n")
+            f.write(f"=== {side.upper()} ===\n")
+
+            chunk_size = 10
+            chunks = [assets[i:i + chunk_size] for i in range(0, len(assets), chunk_size)]
+            for chunk in chunks:
+                f.write(",".join(str(asset).zfill(5) for asset in chunk))
+                f.write("\n")
+
+    return path
+
+def delete_files(path: str, suffix="txt"):
+    """Delete all files with given suffix in path"""
+    for file in os.scandir(path):
+        if file.name.endswith(f".{suffix}"):
+            os.unlink(file.path)

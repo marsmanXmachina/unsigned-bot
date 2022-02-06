@@ -5,6 +5,7 @@ Module for fetching data from tokhun.io marketplace
 import requests
 from ratelimit import limits
 
+from unsigned_bot.log import logger
 from unsigned_bot.parsing import add_num_props
 from unsigned_bot.urls import TOKHUN_API_URL
 
@@ -31,7 +32,7 @@ async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
         try:
             response = call_api(url, params).json()
         except:
-            print("Fetching data failed!")
+            logger.warning(f"Fetching data from {MARKETPLACE.upper()} failed")
             return
         else:
             new_assets = response.get("data")
@@ -44,7 +45,8 @@ async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
         
         params["page"] +=1
 
-    print(f"{len(assets_all)} assets found at {MARKETPLACE.upper()}!")
+    logger.info(f"{len(assets_all)} assets found at {MARKETPLACE.upper()}")
+    
     return assets_all
 
 @limits(calls=10, period=60)

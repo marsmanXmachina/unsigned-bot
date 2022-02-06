@@ -4,10 +4,9 @@ Module for geometry cog
 
 import random
 import math
-import inflect
 from typing import Optional
+
 import discord
-from discord import Embed, Colour
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
@@ -15,13 +14,18 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 from unsigned_bot import ROOT_DIR, IMAGE_PATH
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.config import GUILD_IDS
+from unsigned_bot.log import logger
 from unsigned_bot.draw import gen_grid, delete_image_files
 from unsigned_bot.deconstruct import SUBPATTERN_NAMES, filter_subs_by_names
-from unsigned_bot.emojis import FORMS_EMOJIS
-from .embeds import embed_pattern_combo
+from unsigned_bot.emojis import *
+from .embeds import embed_pattern_combo, embed_forms
 
 
-class Geometry(commands.Cog):
+class GeometryCog(commands.Cog, name = "Geometry"):
+    """commands for geometry analysis"""
+
+    COG_EMOJI = EMOJI_ORANGE_DIAMOND
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -59,17 +63,7 @@ class Geometry(commands.Cog):
 
         num_found = len(clean_form)
 
-        p = inflect.engine()
-        form_name = p.plural(form)
-        if form == "rivers" or form == "veins":
-            form_name = form
-
-        emoji = FORMS_EMOJIS.get(form)
-        title = f"{emoji} {form_name} {emoji}"
-        description=f"**{num_found}** clean {form_name} in whole collection"
-        color = Colour.dark_blue()
-
-        embed = Embed(title=title, description=description, color=color)
+        embed = embed_forms(form, num_found)
 
         embed.set_footer(text=f"\nDiscord Bot by Mar5man")
 
@@ -158,5 +152,5 @@ class Geometry(commands.Cog):
 
 
 def setup(bot: commands.Bot):
-    bot.add_cog(Geometry(bot))
-    print("geometry cog loaded")
+    bot.add_cog(GeometryCog(bot))
+    logger.debug(f"{GeometryCog.__name__} loaded")

@@ -10,6 +10,7 @@ from unsigned_bot.parsing import (
     get_asset_name_from_idx,
     get_numbers_from_assets,
     get_asset_from_number,
+    get_unsig_url,
     link_asset_to_marketplace
 )
 
@@ -65,3 +66,22 @@ def embed_siblings(number: str, siblings: list, selected: list, offers: list, co
         embed.add_field(name=f"{EMOJI_ARROW_DOWN} Unsigs displayed {EMOJI_ARROW_DOWN}", value=displayed_str, inline=False)
 
     return embed
+
+def embed_collection_grid(numbers: list[str], columns: int) -> Embed:
+    """Return discord embed for collection grid"""
+
+    title = f"{EMOJI_FRAME} Your collection {EMOJI_FRAME}"
+    description="Look at this beautiful collection of unsigs..."
+    color = Colour.dark_blue()
+
+    embed = Embed(title=title, description=description, color=color)
+
+    collection_str=" "
+    unsigs_links = [f"[#{num.zfill(5)}]({get_unsig_url(num)})" for num in numbers]
+    
+    for i, link in enumerate(unsigs_links):
+        collection_str += f" {link}"
+        if (i+1) % columns == 0:
+            collection_str += f"\n"
+
+    embed.add_field(name=f"{EMOJI_ARROW_DOWN} Top to Bottom {EMOJI_ARROW_DOWN}", value=collection_str, inline=False)

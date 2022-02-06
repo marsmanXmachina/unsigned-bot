@@ -2,17 +2,22 @@
 Module for market cog
 """
 
+from re import I
 from typing import Optional
 import discord
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils.manage_commands import create_choice, create_option
 
-from unsigned_bot import IMAGE_PATH
+from unsigned_bot import IMAGE_PATH, ROOT_DIR
 from unsigned_bot.config import GUILD_IDS
 from unsigned_bot.constants import MAX_AMOUNT
+from unsigned_bot.log import logger
+from unsigned_bot.emojis import *
 from unsigned_bot.utility.time_util import get_interval_from_period
+from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.draw import (
+    gen_unsig,
     gen_grid,
     gen_grid_with_matches,
     delete_image_files
@@ -20,9 +25,15 @@ from unsigned_bot.draw import (
 from unsigned_bot.matching import (
     match_unsig,
     choose_best_matches,
-    get_similar_unsigs
+    get_similar_unsigs,
+    save_matches_to_file,
+    delete_files
 )
-from unsigned_bot.fetch import get_unsig_data, get_minting_data
+from unsigned_bot.fetch import (
+    get_unsig_data, 
+    get_minting_data,
+    get_ipfs_url_from_file
+)
 from unsigned_bot.parsing import (
     get_asset_name_from_idx,
     get_numbers_from_assets,
@@ -36,7 +47,11 @@ from unsigned_bot.embedding import add_data_source, add_disclaimer, add_policy
 from .embeds import embed_sales, embed_related, embed_matches, embed_offers, embed_offer
 
 
-class Market(commands.Cog):
+class MarketCog(commands.Cog, name = "Market"):
+    """commands for market related stuff"""
+
+    COG_EMOJI = EMOJI_SHOPPINGBAGS
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -133,7 +148,7 @@ class Market(commands.Cog):
         asset_name = get_asset_name_from_idx(number)
 
         if not unsig_exists(number):
-            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT-1}.")
             return
         else:
             if self.bot.sales:
@@ -182,10 +197,22 @@ class Market(commands.Cog):
                 description="number of unsig you want to match",
                 required=True,
                 option_type=3,
+            ),
+            create_option(
+                name="search",
+                description="Search entire collection",
+                required=False,
+                option_type=4,
+                choices=[
+                    create_choice(
+                        name="entire collection",
+                        value=True
+                    ),
+                ]
             )
         ]       
     )
-    async def _matches(self, ctx: SlashContext, number: str):
+    async def _matches(self, ctx: SlashContext, number: str, search=False):
         "show available matches on marketplace"
         
         if ctx.channel.name == "general":
@@ -195,35 +222,51 @@ class Market(commands.Cog):
         asset_name = get_asset_name_from_idx(number)
 
         if not unsig_exists(number):
-            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT-1}.")
             return
         else:
-            if self.bot.offers:
-                offers_numbers = get_numbers_from_assets(self.bot.offers)
-
-                matches = match_unsig(number, offers_numbers)
-                best_matches = choose_best_matches(number, matches)
-
-                embed = embed_matches(number, matches, best_matches, self.bot.offers)
-                add_disclaimer(embed, self.bot.offers_updated)
-
-                try:
-                    image_path = await gen_grid_with_matches(best_matches)
-
-                    image_file = discord.File(image_path, filename="matches.png")
-                    if image_file:
-                        embed.set_image(url="attachment://matches.png")
-
-                    delete_image_files(IMAGE_PATH)
-                except:
-                    await ctx.send(content=f"I can't generate the matches of your unsig.")
-                    return
-                else:
-                    await ctx.send(file=image_file, embed=embed)
-
+            if search:
+                all_matches = load_json(f"{ROOT_DIR}/data/json/all_matches.json")
+                matches = all_matches.get(number)
+                
             else:
-                await ctx.send(content=f"Currently no marketplace data available...")
-                return   
+                if not self.bot.offers:
+                    await ctx.send(content=f"Currently no marketplace data available...")
+                    return   
+
+                offers_numbers = get_numbers_from_assets(self.bot.offers)
+                matches = match_unsig(number, offers_numbers)
+    
+            best_matches = choose_best_matches(number, matches)
+
+            embed = embed_matches(number, matches, best_matches, self.bot.offers, entire_collection=search)
+
+            if not search:
+                add_disclaimer(embed, self.bot.offers_updated)
+            else:
+                embed.set_footer(text=f"\nDiscord Bot by Mar5man")
+
+            try:
+                image_path = await gen_grid_with_matches(best_matches)
+
+                image_file = discord.File(image_path, filename="matches.png")
+                if image_file:
+                    embed.set_image(url="attachment://matches.png")
+
+                delete_image_files(IMAGE_PATH)
+            except:
+                await ctx.send(content=f"I can't generate the matches of your unsig.")
+                return
+            else:
+                await ctx.send(file=image_file, embed=embed)
+
+                # send additional text file with all matches in entire collection
+                if search:
+                    text_file_path = save_matches_to_file(number, matches)
+                    text_file = discord.File(text_file_path)
+                    delete_files(path = f"{ROOT_DIR}/data")
+
+                    await ctx.send(file=text_file)
 
     @cog_ext.cog_slash(
         name="floor", 
@@ -281,7 +324,7 @@ class Market(commands.Cog):
         asset_name = get_asset_name_from_idx(number)
 
         if not unsig_exists(number):
-            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT}.")
+            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT-1}.")
         else:
             number = str(int(number))
 
@@ -292,9 +335,23 @@ class Market(commands.Cog):
 
             embed = await embed_offer(seller, price, asset_name, unsig_data, minting_data)
 
-            await ctx.send(embed=embed)
+            try:
+                image_path = await gen_unsig(number, dim=1024)
+                image_file = discord.File(image_path, filename="image.png")
+                if image_file:
+                    embed.set_image(url="attachment://image.png")
+
+                delete_image_files(IMAGE_PATH, suffix="png")
+            except:
+                image_url = await get_ipfs_url_from_file(asset_name)
+                if image_url:
+                    embed.set_image(url=image_url)
+
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send(file=image_file, embed=embed)
 
 
 def setup(bot: commands.Bot):
-    bot.add_cog(Market(bot))
-    print("market cog loaded")
+    bot.add_cog(MarketCog(bot))
+    logger.debug(f"{MarketCog.__name__} loaded")

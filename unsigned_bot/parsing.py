@@ -119,9 +119,8 @@ def link_asset_to_marketplace(number: str, marketplace_id: str, marketplace: str
     url = get_url_from_marketplace_id(marketplace_id, marketplace)
     return f" [#{str(number).zfill(5)}]({url}) "
 
-def link_assets_to_grid(numbers, cols):
+def link_assets_to_grid(numbers: list, cols: int) -> str:
     assets_str = ""
-
     for i, number in enumerate(numbers):
         link = get_unsig_url(str(number))
         assets_str += f" [#{str(number).zfill(5)}]({link}) "
@@ -133,7 +132,7 @@ def link_assets_to_grid(numbers, cols):
 
 def unsig_exists(number: str) -> bool:
     try:
-        if int(number) <= MAX_AMOUNT and int(number) >= 0:
+        if int(number) < MAX_AMOUNT and int(number) >= 0:
             return True
         else:
             return False
@@ -142,18 +141,13 @@ def unsig_exists(number: str) -> bool:
 
 def parse_sale(sale_data: dict) -> tuple:
     marketplace_name = sale_data.get("assetid")
-
     num_props = sale_data.get("num_props")
 
-    price = sale_data.get("price", None)
-    if price:
-        price = price/1000000
+    price = sale_data.get("price")
+    price = price/1000000 if price else None
 
     timestamp_ms = sale_data.get("date")
-    if timestamp_ms:
-        date = datetime.utcfromtimestamp(timestamp_ms/1000).strftime("%Y-%m-%d %H:%M:%S UTC")
-    else:
-        date = None
+    date = datetime.utcfromtimestamp(timestamp_ms/1000).strftime("%Y-%m-%d %H:%M:%S UTC") if timestamp_ms else None
     
     return (marketplace_name, num_props, price, date)
 

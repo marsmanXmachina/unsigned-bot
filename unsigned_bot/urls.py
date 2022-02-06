@@ -23,6 +23,11 @@ JPGSTORE_API_URL = "https://www.jpg.store/api"
 UNSIGS_URL = "https://www.unsigs.com"
 UNSIG_MATCHBOX_LINK = "https://www.fibons.io/unsigs/services/"
 
+MARKETPLACES_BASE_URLS = {
+    "cnft": CNFT_URL,
+    "tokhun": TOKHUN_URL,
+    "jpgstore": JPGSTORE_URL    
+}
 
 MARKETPLACES = {
     "CNFT.IO": "https://cnft.io/marketplace?project=unsigned_algorithms",
@@ -37,3 +42,4 @@ DISCORD_ESCROWS = {
 }
 
 DISCORD_CNFT_ART = "https://discord.gg/AgMWTWDwaS"
+
