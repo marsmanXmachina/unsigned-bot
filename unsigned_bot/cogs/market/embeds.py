@@ -11,7 +11,6 @@ from unsigned_bot.utility.time_util import timestamp_to_datetime
 from unsigned_bot.utility.price_util import get_average_price, get_min_prices
 from unsigned_bot.constants import POLICY_ID
 from unsigned_bot.emojis import *
-from unsigned_bot.fetch import get_ipfs_url_from_file
 from unsigned_bot.parsing import (
     get_asset_name_from_idx,
     get_idx_from_asset_name,
@@ -35,7 +34,6 @@ def embed_sales(assets: list, prices_type: str, period: Optional[str]) -> Embed:
 
     description=f"**{len(assets)}** sold on marketplace"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     ordered = order_by_num_props(assets)
@@ -80,7 +78,6 @@ def embed_related(number: str, related: list[int], selected: list[int], sales: l
     title = f"{EMOJI_MIRROW} like {asset_name} {EMOJI_MIRROW}"
     description="Related unsigs sold"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     related_sales = [sale for sale in sales if get_idx_from_asset_name(sale.get("assetid")) in related]
@@ -125,7 +122,6 @@ def embed_matches(number: str, matches: list[int], best_matches: list[int], offe
     else:
         description="Available matches on marketplace"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     def link_match_to_marketplace(match, offers: list) -> str:
@@ -147,7 +143,7 @@ def embed_matches(number: str, matches: list[int], best_matches: list[int], offe
                 matches_side = shuffled[:9]
                 rest = shuffled[9:] if len(shuffled) > 9 else 0
 
-            matches_str=""
+            matches_str = ""
             for match in matches_side:
                 if entire_collection:
                     unsigs_url = get_unsig_url(match)
@@ -159,7 +155,7 @@ def embed_matches(number: str, matches: list[int], best_matches: list[int], offe
             if entire_collection:
                 matches_str += f"...and {len(rest)} more"
         else:
-            matches_str="` - `"
+            matches_str = "` - `"
         
         embed.add_field(name=f"{arrow} {side.upper()} {arrow}", value=matches_str, inline=False)
 
@@ -193,7 +189,6 @@ def embed_offers(assets_ordered: dict) -> Embed:
     title = f"{EMOJI_BROOM} Unsigs Floor {EMOJI_BROOM}"
     description="Cheapest unsigs on marketplace\n(auctions excluded)"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     for idx in range(7):
@@ -228,7 +223,6 @@ async def embed_offer(seller: str, price: Optional[str], asset_name: str, unsig_
     title = f"{EMOJI_SHOPPINGBAGS} {asset_name} for sale {EMOJI_SHOPPINGBAGS}"
     description="Are you interested in this beautiful unsig?"
     color=discord.Colour.dark_blue()
-
     embed = discord.Embed(title=title, description=description, color=color)
 
     embed.add_field(name=f"{EMOJI_PERSON} Seller", value=seller, inline=False)

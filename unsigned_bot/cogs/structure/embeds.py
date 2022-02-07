@@ -17,7 +17,6 @@ def embed_composition(number:str, asset_name: str) -> Embed:
     title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
     description="Explore the composition of your unsig..."
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     try:
@@ -48,7 +47,6 @@ def embed_subs(number: str, asset_name: str, layers: list, subpattern_names: dic
     title = f"{EMOJI_PALETTE} {asset_name} {EMOJI_PALETTE}"
     description="Explore the subpattern of your unsig..."
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     if len(layers) > 1:

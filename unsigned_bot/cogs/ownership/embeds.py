@@ -12,7 +12,6 @@ def embed_owners_wallet(address, asset_name) -> Embed:
     title = f"{asset_name} is owned by"
     description = f"`{address}`"
     color = Colour.blurple()
-
     embed = Embed(title=title, description=description, color=color)
 
     name = "This address belongs to wallet..."

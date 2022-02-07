@@ -11,8 +11,11 @@ from unsigned_bot.constants import POLICY_ID
 
 
 async def aggregate_data_from_marketplaces(sold: Optional[bool] = False) -> list:
+    """Fetch assets data from available marketplaces"""
+
     data = list()
 
+    # === cnft.io ==
     try:
         assets_cnft = await cnft.fetch_data_from_marketplace("unsigned_algorithms", sold)
     except:
@@ -21,6 +24,7 @@ async def aggregate_data_from_marketplaces(sold: Optional[bool] = False) -> list
         if assets_cnft:
             data.extend(assets_cnft)
 
+    # === Tokhun.io ===
     try:
         assets_tokhun = await tokhun.get_data_from_marketplace(POLICY_ID, sold)
     except:
@@ -29,6 +33,7 @@ async def aggregate_data_from_marketplaces(sold: Optional[bool] = False) -> list
         if assets_tokhun:
             data.extend(assets_tokhun)
     
+    # === jpg.store ===
     try:
         assets_jpg = await jpgstore.get_data_from_marketplace(POLICY_ID, sold)
     except:

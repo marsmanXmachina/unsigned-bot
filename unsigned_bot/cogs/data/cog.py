@@ -30,8 +30,7 @@ from unsigned_bot.parsing import (
     get_idx_from_asset_name,
     get_asset_name_from_idx,
     get_asset_name_from_minting_order,
-    get_certificate_data_by_number,
-    unsig_exists
+    get_certificate_data_by_number
 )
 from unsigned_bot.cogs.checks import valid_channel, valid_unsig
 from unsigned_bot.embedding import add_last_update
@@ -110,8 +109,7 @@ class DataCog(commands.Cog, name="Data"):
             try:
                 image_path = await gen_animation(number, mode=animation, backwards=True)
                 image_file = discord.File(image_path, filename="image.gif")
-                if image_file:
-                    embed.set_image(url="attachment://image.gif")
+                embed.set_image(url="attachment://image.gif")
 
                 delete_image_files(IMAGE_PATH, suffix="gif")
             except:
@@ -124,16 +122,15 @@ class DataCog(commands.Cog, name="Data"):
         try: 
             image_path = await gen_unsig(number, dim=1024)
             image_file = discord.File(image_path, filename="image.png")
-            if image_file:
-                embed.set_image(url="attachment://image.png")
+            embed.set_image(url="attachment://image.png")
 
             delete_image_files(IMAGE_PATH, suffix="png")
         except:
-            image_url = await get_ipfs_url_from_file(asset_name)
             try:
+                image_url = await get_ipfs_url_from_file(asset_name)
                 embed.set_image(url=image_url)
             except:
-                pass
+                logger.warning(f"Can not set image {image_url}")
             finally:
                 await ctx.send(embed=embed)
                 return
@@ -156,8 +153,7 @@ class DataCog(commands.Cog, name="Data"):
     async def _minted(self, ctx: SlashContext, index: str):
         """show unsig with given minting order"""  
 
-        if ctx.channel.name == "general":
-            await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        if not await valid_channel(ctx):
             return
             
         asset_name = get_asset_name_from_minting_order(index)
@@ -177,16 +173,18 @@ class DataCog(commands.Cog, name="Data"):
             try:
                 image_path = await gen_unsig(number, dim=1024)
                 image_file = discord.File(image_path, filename="image.png")
-                if image_file:
-                    embed.set_image(url="attachment://image.png")
+                embed.set_image(url="attachment://image.png")
 
                 delete_image_files(IMAGE_PATH, suffix="png")
             except:
-                image_url = await get_ipfs_url_from_file(asset_name)
-                if image_url:
+                try:
+                    image_url = await get_ipfs_url_from_file(asset_name)
                     embed.set_image(url=image_url)
-
-                await ctx.send(embed=embed)
+                except:
+                    logger.warning(f"Can not set image {image_url}")
+                finally:
+                    await ctx.send(embed=embed)
+                    return
             else:
                 await ctx.send(file=image_file, embed=embed)
 
@@ -206,25 +204,23 @@ class DataCog(commands.Cog, name="Data"):
     async def _metadata(self, ctx: SlashContext, number: str):
         """show metadata of your unsig"""
 
-        if ctx.channel.name == "general":
-            await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        if not await valid_channel(ctx):
+            return
+
+        if not await valid_unsig(ctx, number):
             return
 
         asset_name = get_asset_name_from_idx(number)
+        try:
+            metadata = get_metadata_from_asset_name(asset_name)
+            embed = await embed_metadata(metadata)
 
-        if not unsig_exists(number):
-            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT-1}.")
+            embed.set_footer(text=f"\nData comes from {POOL_PM_URL}")
+        except:
+            await ctx.send(content=f"I can't find the metadata of your unsig!")
+            return
         else:
-            try:
-                metadata = get_metadata_from_asset_name(asset_name)
-                embed = await embed_metadata(metadata)
-
-                embed.set_footer(text=f"\nData comes from {POOL_PM_URL}")
-            except:
-                await ctx.send(content=f"I can't find the metadata of your unsig!")
-                return
-            else:
-                await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
         
     @cog_ext.cog_slash(
         name="cert", 
@@ -242,29 +238,26 @@ class DataCog(commands.Cog, name="Data"):
     async def _cert(self, ctx: SlashContext, number: str):
         """show certificate of your unsig"""
 
-        if ctx.channel.name == "general":
-            await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        if not await valid_channel(ctx):
             return
 
-        asset_name = get_asset_name_from_idx(number)
+        if not await valid_unsig(ctx, number):
+            return
 
-        if not unsig_exists(number):
-            await ctx.send(content=f"{asset_name} does not exist!\nPlease enter number between 0 and {MAX_AMOUNT-1}.")
+        number = str(int(number))
+
+        certificates = load_json(f"{ROOT_DIR}/data/json/certificates.json")
+        num_certificates = len(certificates)
+        data = get_certificate_data_by_number(number, certificates)
+
+        try:
+            embed = embed_certificate(number, data, num_certificates)
+            add_last_update(embed, self.bot.certs_updated)
+        except:
+            await ctx.send(content=f"I can't embed certificate for your unsig.")
+            return
         else:
-            number = str(int(number))
-
-            certificates = load_json(f"{ROOT_DIR}/data/json/certificates.json")
-            num_certificates = len(certificates)
-            data = get_certificate_data_by_number(number, certificates)
-
-            try:
-                embed = embed_certificate(number, data, num_certificates)
-                add_last_update(embed, self.bot.certs_updated)
-            except:
-                await ctx.send(content=f"I can't embed certificate for your unsig.")
-                return
-            else:
-                await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
 
 
 def setup(bot: commands.Bot):

@@ -113,8 +113,8 @@ class GeneralCog(commands.Cog, name="General"):
         title = f"{EMOJI_PARTY} Quantum of v2 {EMOJI_PARTY}"
         description="A new era begins..."
         color=discord.Colour.purple()
-
         embed = discord.Embed(title=title, description=description, color=color)
+        
         embed.set_image(url="https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif")
 
         await ctx.send(embed=embed)

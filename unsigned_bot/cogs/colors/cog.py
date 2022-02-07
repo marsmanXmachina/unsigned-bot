@@ -9,7 +9,6 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 
 from unsigned_bot import IMAGE_PATH
 from unsigned_bot.config import GUILD_IDS
-from unsigned_bot.constants import MAX_AMOUNT
 from unsigned_bot.log import logger
 from unsigned_bot.emojis import *
 from unsigned_bot.colors import get_color_frequencies
@@ -42,8 +41,7 @@ class ColorCog(commands.Cog, name="Color"):
         try:
             image_path = "img/color_freqs.jpg" 
             image_file = discord.File(image_path, filename="image.jpg")
-            if image_file:
-                embed.set_image(url="attachment://image.jpg")
+            embed.set_image(url="attachment://image.jpg")
         except:
             await ctx.send(content=f"I can't generate color ranking.")
             return
@@ -81,8 +79,7 @@ class ColorCog(commands.Cog, name="Color"):
         try:
             image_path = await gen_color_histogram(number, color_frequencies)
             image_file = discord.File(image_path, filename="histogram.png")
-            if image_file:
-                embed.set_image(url="attachment://histogram.png")
+            embed.set_image(url="attachment://histogram.png")
                 
             delete_image_files(IMAGE_PATH)
         except:

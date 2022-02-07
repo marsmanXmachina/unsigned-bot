@@ -3,4 +3,5 @@ venv
 .vscode/*
 **__pycache__/
 .env
+.config
 *.egg-info/

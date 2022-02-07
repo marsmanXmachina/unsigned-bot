@@ -1,6 +1,5 @@
 import requests
 
-from unsigned_bot.utility.files_util import save_json
 from unsigned_bot.utility.time_util import datetime_to_timestamp
 from unsigned_bot.log import logger
 from unsigned_bot.parsing import add_num_props

@@ -5,7 +5,6 @@ Module for customized discord embeds
 from datetime import datetime
 from discord import Embed
 
-from unsigned_bot import IMAGE_PATH
 from unsigned_bot.utility.time_util import timestamp_to_datetime
 from unsigned_bot.constants import POLICY_ID, MAX_AMOUNT
 from unsigned_bot.emojis import *
@@ -66,3 +65,4 @@ def add_props(embed: Embed, unsig_data: dict):
 
 def list_marketplace_base_urls() -> str:
     return "".join(f"- {url}\n" for url in MARKETPLACES_BASE_URLS.values())
+

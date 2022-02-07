@@ -29,16 +29,15 @@ MARKETPLACES_BASE_URLS = {
     "jpgstore": JPGSTORE_URL    
 }
 
-MARKETPLACES = {
-    "CNFT.IO": "https://cnft.io/marketplace?project=unsigned_algorithms",
-    "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1",
-    "jpg.store": "https://www.jpg.store/collection/unsigned_algorithms"
+PLACES_BUY_UNSIGS = {
+    "jpg.store": "https://www.jpg.store/collection/unsigned_algorithms",
+    "Tokhun.io": "https://tokhun.io/marketplace?verifiedPolicyId=yes&project%5B%5D=347&minPrice=&maxPrice=&sortBy=Newest+First&page=1"
 }
 
-DISCORD_ESCROWS = {
-    "CNFT": "https://discord.gg/jpxXxMr8Dg",
-    "CardanoNFT": "https://discord.gg/mWDTRdDMVk",
-    "The Hoskinsons": "https://discord.gg/UvFyfsMgfP"
+PLACES_BUY_TOKEN = {
+    "SundaeSwap": "https://exchange.sundaeswap.finance/#/swap?swap_from=cardano.ada&swap_to=1d76557b2e2df0c19d23513081c1916a92f7ab313d7c06b1e3998283.756e7369676e6564746f6b656e",
+    "MuesliSwap": "https://muesliswap.com/markets/community/token/1d76557b2e2df0c19d23513081c1916a92f7ab313d7c06b1e3998283.unsignedtoken",
+    "jpg.store": "https://www.jpg.store/asset/1d76557b2e2df0c19d23513081c1916a92f7ab313d7c06b1e3998283756e7369676e6564746f6b656e"
 }
 
 DISCORD_CNFT_ART = "https://discord.gg/AgMWTWDwaS"

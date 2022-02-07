@@ -14,10 +14,11 @@ from discord_slash.utils.manage_commands import create_choice, create_option
 from unsigned_bot import ROOT_DIR, IMAGE_PATH
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.config import GUILD_IDS
+from unsigned_bot.emojis import *
 from unsigned_bot.log import logger
 from unsigned_bot.draw import gen_grid, delete_image_files
 from unsigned_bot.deconstruct import SUBPATTERN_NAMES, filter_subs_by_names
-from unsigned_bot.emojis import *
+from unsigned_bot.cogs.checks import valid_channel
 from .embeds import embed_pattern_combo, embed_forms
 
 
@@ -46,8 +47,7 @@ class GeometryCog(commands.Cog, name = "Geometry"):
     async def forms(self, ctx: SlashContext, form: str):
         """show unsigs with given form"""
         
-        if ctx.channel.name == "general":
-            await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        if not await valid_channel(ctx):
             return
         
         subs_advanced = load_json(f"{ROOT_DIR}/data/json/subs_advanced.json")
@@ -70,8 +70,7 @@ class GeometryCog(commands.Cog, name = "Geometry"):
         try:
             image_path = f"img/{form}.jpg" 
             image_file = discord.File(image_path, filename="image.jpg")
-            if image_file:
-                embed.set_image(url="attachment://image.jpg")
+            embed.set_image(url="attachment://image.jpg")
         except:
             await ctx.send(content=f"I can't display selected forms.")
             return
@@ -109,13 +108,11 @@ class GeometryCog(commands.Cog, name = "Geometry"):
     async def _pattern_combo(self, ctx: SlashContext, first_pattern: str, second_pattern: Optional[str] = None, third_pattern: Optional[str] = None):
         """count unsigs with given pattern combo"""    
 
-        if ctx.channel.name == "general":
-            await ctx.send(content=f"I'm not allowed to post here.\n Please go to #bot channel.")
+        if not await valid_channel(ctx):
             return
 
         pattern = [first_pattern, second_pattern, third_pattern]
         pattern_for_search = [p for p in pattern if p in SUBPATTERN_NAMES]
-
         subs_counted = load_json(f"{ROOT_DIR}/data/json/subs_counted.json")
         pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
 
@@ -135,10 +132,8 @@ class GeometryCog(commands.Cog, name = "Geometry"):
         if to_display:
             try:
                 image_path = await gen_grid(to_display, cols)
-
                 image_file = discord.File(image_path, filename="grid.png")
-                if image_file:
-                    embed.set_image(url="attachment://grid.png")
+                embed.set_image(url="attachment://grid.png")
 
                 delete_image_files(IMAGE_PATH)
             except:
@@ -148,7 +143,6 @@ class GeometryCog(commands.Cog, name = "Geometry"):
                 await ctx.send(file=image_file, embed=embed)
         else:
             await ctx.send(embed=embed)
-
 
 
 def setup(bot: commands.Bot):

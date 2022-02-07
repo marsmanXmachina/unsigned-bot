@@ -10,6 +10,7 @@ from discord import Embed, Colour
 from unsigned_bot import ROOT_DIR
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.time_util import timestamp_to_datetime
+from unsigned_bot.constants import MAX_AMOUNT
 from unsigned_bot.emojis import *
 from unsigned_bot.urls import *
 from unsigned_bot.colors import (
@@ -44,7 +45,6 @@ def embed_basic_info(number: str, asset_name: str, unsigs_data: dict, minting_da
     title = f"{asset_name}"
     description="minted by unsigned_algorithms"
     color=discord.Colour.dark_blue()
-
     embed = discord.Embed(title=title, description=description, color=color, url=unsig_url)
 
     add_minting_order(embed, minting_data)
@@ -63,6 +63,7 @@ def embed_basic_info(number: str, asset_name: str, unsigs_data: dict, minting_da
     
 async def embed_metadata(metadata: dict) -> Embed:
     """Return discord embed with metadata of unsig"""
+    
     asset_name = metadata.get("title").replace("_", "")
 
     try:
@@ -76,7 +77,6 @@ async def embed_metadata(metadata: dict) -> Embed:
     title = f"{EMOJI_FILE}  metadata {asset_name}  {EMOJI_FILE}"
     description="Show metadata of your unsig"
     color=discord.Colour.dark_blue()
-
     embed = discord.Embed(title=title, description=description, color=color, url=metadata_url)
 
     for k, v in metadata.items():
@@ -116,7 +116,6 @@ def embed_certificate(number: str, data: dict, num_certificates: int, feed=False
         else:
             description=f"**{num_certificates}** certificates already minted\n"
         color = Colour.dark_blue()
-    
         embed = Embed(title=title, description=description, color=color, url=certificate_link)
     else:
         title = f"{EMOJI_CROSS} No cert found for unsig{number.zfill(5)} {EMOJI_CROSS}"
@@ -164,7 +163,7 @@ def add_subpattern(embed: Embed, unsig_data: dict):
     pattern_combo_str = " + \n".join([f" {amount} x {pattern}" for pattern, amount in pattern_formatted.items()])
 
     if layers:
-        frequency_str = f"\n=> **{num_pattern} / 31119** unsigs with this pattern combo"
+        frequency_str = f"\n=> **{num_pattern} / {MAX_AMOUNT}** unsigs with this pattern combo"
     else:
         frequency_str = ""
 
@@ -193,7 +192,7 @@ def add_output_colors(embed: Embed, color_frequencies: dict, num_colors: int = 1
 def add_sales(embed: Embed, sales: list):
     """Add sales to discord embed"""
 
-    sales_value=""
+    sales_value = ""
     for sale in sales:
         price = sale.get('price')/1000000
         timestamp_ms = sale.get('date')

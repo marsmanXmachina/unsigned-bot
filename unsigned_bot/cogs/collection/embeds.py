@@ -3,9 +3,7 @@ Module for collection cog specific discord embeds
 """
 from discord import Embed, Colour
 
-
 from unsigned_bot.emojis import *
-
 from unsigned_bot.parsing import (
     get_asset_name_from_idx,
     get_numbers_from_assets,
@@ -23,7 +21,6 @@ def embed_siblings(number: str, siblings: list, selected: list, offers: list, co
     title = f"{EMOJI_DNA} siblings {asset_name} {EMOJI_DNA}"
     description="Siblings of your unsig"
     color=Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     if offers:
@@ -73,7 +70,6 @@ def embed_collection_grid(numbers: list[str], columns: int) -> Embed:
     title = f"{EMOJI_FRAME} Your collection {EMOJI_FRAME}"
     description="Look at this beautiful collection of unsigs..."
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     collection_str=" "

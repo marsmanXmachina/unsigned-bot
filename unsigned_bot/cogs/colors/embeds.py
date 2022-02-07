@@ -24,7 +24,6 @@ def embed_color_ranking() -> Embed:
     title = f"{EMOJI_PALETTE} Color Rarities {EMOJI_PALETTE} "
     description=f"based on cumulative pixel amount in whole collection"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     total_pixels = sum(PIXELS_COLORS.values())
@@ -64,7 +63,6 @@ def embed_output_colors(number: str, color_frequencies: dict) -> Embed:
     title = f"{EMOJI_PALETTE} colors {asset_name} {EMOJI_PALETTE} "
     description=f"Your unsig has **{num_colors} / 64** output colors"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color, url=unsig_url)
 
     add_output_colors(embed, color_frequencies)

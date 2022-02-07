@@ -8,6 +8,7 @@ from discord import Embed, Colour
 
 from unsigned_bot import ROOT_DIR
 from unsigned_bot.utility.files_util import load_json
+from unsigned_bot.constants import MAX_AMOUNT
 from unsigned_bot.parsing import link_assets_to_grid
 from unsigned_bot.emojis import *
 
@@ -25,12 +26,11 @@ def embed_pattern_combo(pattern_found: list, search_input: list, to_display: lis
     title = f"{EMOJI_LINK} Pattern combo {EMOJI_LINK}"
     description=f"**{num_found}** unsigs with this pattern combo:\n`{pattern_str}`"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     for sub, amount in search_formatted.items():
         frequency = subs_frequencies.get(sub).get(str(amount), 0)
-        embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / 31119** unsigs contain this subpattern", inline=False)
+        embed.add_field(name=f"{amount} x {sub}", value=f"**{frequency} / {MAX_AMOUNT}** unsigs contain this subpattern", inline=False)
 
     if to_display:
         unsigs_str = link_assets_to_grid(to_display, cols)
@@ -50,7 +50,6 @@ def embed_forms(form: str, num_found: int) -> Embed:
     title = f"{emoji} {form_name} {emoji}"
     description=f"**{num_found}** clean {form_name} in whole collection"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     return embed

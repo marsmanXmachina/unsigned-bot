@@ -43,7 +43,9 @@ class HelpCog(commands.Cog, name = "Help"):
             )
         ]
     )
-    async def help(self, ctx: SlashContext, category: Optional[str] = None):
+    async def _help(self, ctx: SlashContext, category: Optional[str] = None):
+        """show available bot commands"""
+        
         if not category:
             title = f"{EMOJI_ROBOT} My commands {EMOJI_ROBOT}"
             description="How can I help you?"

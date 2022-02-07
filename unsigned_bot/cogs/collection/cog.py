@@ -54,7 +54,7 @@ class CollectionCog(commands.Cog, name="Collection"):
         if not await valid_unsig(ctx, number):
             return
 
-        collection_numbers = range(0,31119)
+        collection_numbers = range(0,MAX_AMOUNT)
         similar_unsigs = get_similar_unsigs(number, collection_numbers, structural=False)
 
         siblings_numbers = list(set().union(*similar_unsigs.values()))
@@ -72,8 +72,7 @@ class CollectionCog(commands.Cog, name="Collection"):
         try:
             image_path = await gen_grid(selected_numbers, cols=2)
             image_file = discord.File(image_path, filename="siblings.png")
-            if image_file:
-                embed.set_image(url="attachment://siblings.png")
+            embed.set_image(url="attachment://siblings.png")
 
             delete_image_files(IMAGE_PATH)
         except:
@@ -140,8 +139,7 @@ class CollectionCog(commands.Cog, name="Collection"):
         try:
             image_path = await gen_grid(numbers_cleaned, columns)
             image_file = discord.File(image_path, filename="collection.png")
-            if image_file:
-                embed.set_image(url="attachment://collection.png")
+            embed.set_image(url="attachment://collection.png")
 
             delete_image_files(IMAGE_PATH)
         except:

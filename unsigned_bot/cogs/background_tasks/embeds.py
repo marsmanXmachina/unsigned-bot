@@ -19,7 +19,6 @@ async def embed_sale(sale_data: dict) -> Embed:
     title = f"{EMOJI_CART} {asset_name} {EMOJI_CART}"
     description="minted by unsigned_algorithms"
     color = Colour.dark_blue()
-
     embed = Embed(title=title, description=description, color=color)
 
     price = sale_data.get("price")
