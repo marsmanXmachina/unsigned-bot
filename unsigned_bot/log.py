@@ -1,11 +1,16 @@
 """
-Module for custom logger.
+Module for custom logger
 """
 
 import logging
 
 
 def setup_logger(name="unsigned_bot", log_level=logging.INFO):
+    """
+    Return logger with given log level. 
+    Default log level is INFO
+    """
+
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
 
@@ -14,7 +19,6 @@ def setup_logger(name="unsigned_bot", log_level=logging.INFO):
     logger.addHandler(handler)
 
     return logger
-
 
 # Initialize global logger
 logger = setup_logger()

@@ -23,7 +23,7 @@ from unsigned_bot.draw import (
 )
 from unsigned_bot.matching import (
     match_unsig,
-    choose_best_matches,
+    choose_random_matches,
     get_similar_unsigs,
     save_matches_to_file,
     delete_files
@@ -224,9 +224,9 @@ class MarketCog(commands.Cog, name = "Market"):
             offers_numbers = get_numbers_from_assets(self.bot.offers)
             matches = match_unsig(number, offers_numbers)
 
-        best_matches = choose_best_matches(number, matches)
+        random_matches = choose_random_matches(number, matches)
 
-        embed = embed_matches(number, matches, best_matches, self.bot.offers, entire_collection=search)
+        embed = embed_matches(number, matches, random_matches, self.bot.offers, entire_collection=search)
 
         if not search:
             add_disclaimer(embed, self.bot.offers_updated)
@@ -234,7 +234,7 @@ class MarketCog(commands.Cog, name = "Market"):
             embed.set_footer(text=f"\nDiscord Bot by Mar5man")
 
         try:
-            image_path = await gen_grid_with_matches(best_matches)
+            image_path = await gen_grid_with_matches(random_matches)
             image_file = discord.File(image_path, filename="matches.png")
             embed.set_image(url="attachment://matches.png")
 

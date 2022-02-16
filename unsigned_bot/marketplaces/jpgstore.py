@@ -1,3 +1,8 @@
+"""
+Module for fetching data from jpg.store marketplace
+"""
+
+from typing import Optional
 import requests
 
 from unsigned_bot.utility.time_util import datetime_to_timestamp
@@ -8,7 +13,8 @@ from unsigned_bot.urls import JPGSTORE_API_URL
 MARKETPLACE = "jpgstore"
 
 
-async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
+async def get_data_from_marketplace(policy_id: str, sold: Optional[bool] = False) -> list:
+    """Fetch all assets and return list of parsed assets"""
     
     request_type = "sales" if sold else "listings"
     url = f"{JPGSTORE_API_URL}/policy/{policy_id}/{request_type}"
@@ -28,6 +34,11 @@ async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
         return assets_extended
 
 def parse_data(assets: list, sold: bool) -> list:
+    """
+    Extract relevant data from assets.
+    Has to be kept updated along with jpg.store API.
+    """
+
     parsed = list()
 
     for asset in assets:
@@ -40,8 +51,11 @@ def parse_data(assets: list, sold: bool) -> list:
         
         if sold:
             date = asset.get("confirmed_at")
+
+            # only add asset if date exists
             if not date:
                 continue
+
             asset_parsed["date"] = datetime_to_timestamp(date)
             asset_parsed["sold"] = True
         else:

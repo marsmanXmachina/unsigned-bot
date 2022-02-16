@@ -2,6 +2,7 @@
 Module for fetching data from tokhun.io marketplace
 """
 
+from typing import Optional
 import requests
 from ratelimit import limits
 
@@ -12,7 +13,9 @@ from unsigned_bot.urls import TOKHUN_API_URL
 MARKETPLACE = "tokhun"
 
 
-async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
+async def get_data_from_marketplace(policy_id: str, sold: Optional[bool] = False) -> list:
+    """Fetch assets data via pagination and return list of parsed assets"""
+
     if sold:
         url = f"{TOKHUN_API_URL}/sold"
     else:
@@ -50,14 +53,21 @@ async def get_data_from_marketplace(policy_id: str, sold=False) -> list:
     return assets_all
 
 @limits(calls=10, period=60)
-def call_api(url, params):
-    response = requests.get(url, params=params)
+def call_api(url: str, params: dict) -> dict:
+    """Request API with rate limit of 10 calls per minute"""
 
+    response = requests.get(url, params=params)
     if response.status_code != 200:
         raise Exception('API response: {}'.format(response.status_code))
+        
     return response
 
-def parse_data(assets, sold=False):
+def parse_data(assets: list, sold=False) -> list:
+    """
+    Extract relevant data from assets.
+    Has to be kept updated along with tokhun API.
+    """
+
     parsed = list()
 
     for asset in assets:

@@ -1,11 +1,11 @@
 """
-Module for finding matching unsigs
+Module to find matching unsigs
 """
 
 import os
 import random
 from collections import defaultdict
-from typing import List
+from typing import List, Optional
 
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot.utility.geom_util import get_opposite_side, get_rotations_from_direction
@@ -13,26 +13,29 @@ from unsigned_bot.deconstruct import get_prop_layers, order_by_color, get_subpat
 from unsigned_bot import ROOT_DIR
 
 
-def choose_best_matches(number: str, matches: dict) -> dict:
+def choose_random_matches(number: str, matches: dict) -> dict:
     """Choose random selection (one unsig per side) from all available matches"""
-    best_matches = dict()
+
+    random_matches = dict()
 
     for side, side_matches in matches.items():
         if len(side_matches) == 1:
-            best_match = side_matches[0]
+            random_match = side_matches[0]
         else:
-            best_match = random.choice(side_matches)
-        best_matches[side] = best_match
-    
-    best_matches["center"] = int(number)
+            random_match = random.choice(side_matches)
 
-    return best_matches
+        random_matches[side] = random_match
+    
+    random_matches["center"] = int(number)
+
+    return random_matches
 
 def match_unsig(number: str, numbers: list) -> dict:
-    """Match unsig with given list of unsigs"""
-    matches = defaultdict(list)
+    """Try to match unsig with given list of unsigs and return all possible matches."""
 
     unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
+
+    matches = defaultdict(list)
 
     idx = int(number)
     if idx == 0:
@@ -47,14 +50,17 @@ def match_unsig(number: str, numbers: list) -> dict:
 
             for side in matches_sides:
                 matches[side].append(j)
-
+                
     return matches
 
-
 def get_matches(udata1: dict, udata2: dict) -> list:
+    """
+    Try to find matches of each side for two given unsigs.
 
-    SIDES = ["top", "left", "right", "bottom"]
-    COLORS = ["Red", "Green", "Blue"]
+    Matching algo:
+    Check for each color layer with same direction if it matches.
+    If there is no color layer with same direction the matching side has to be black for a potential match.
+    """
 
     layers1 = get_prop_layers(udata1) 
     layers2 = get_prop_layers(udata2)
@@ -64,32 +70,33 @@ def get_matches(udata1: dict, udata2: dict) -> list:
 
     matches = list()
 
-    for side in SIDES:
+    for side in ["top", "left", "right", "bottom"]:
 
-        if side == "left" or side == "right":
-            direction = "horizontal"
-        else:
-            direction = "vertical"
-    
-        for color in COLORS:
-            color_layers1 = layers1_ordered.get(color, None)
-            color_layers2 = layers2_ordered.get(color, None)
+        # get direction from side
+        direction = "horizontal" if side == "left" or side == "right" else "vertical"
+
+        for color in ["Red", "Green", "Blue"]:
+            color_layers1 = layers1_ordered.get(color)
+            color_layers2 = layers2_ordered.get(color)
 
             num_layers1 = len(color_layers1) if color_layers1 else 0
             num_layers2 = len(color_layers2) if color_layers2 else 0
 
+            # === colors layers for first unsig do NOT exist ===
             if not color_layers1:
                 if not color_layers2:
-                    continue
+                    continue # potential match because color layers do not exist in both unsigs
                 else:
                     if num_layers2 > 1:
-                        break
+                        break # no match because sides of unsig with more than 1 color layer can not be black
                     else:
                         opposite_side = get_opposite_side(side)
                         if side_is_black(color_layers2[0], opposite_side):
-                            continue
+                            continue # potential match because both matching sides are black (or not existent)
                         else:
-                            break
+                            break # no match because one side is not black
+            
+            # === colors layers for first unsig do exist ===
             else:
                 if not color_layers2:
                     if num_layers1 > 1:
@@ -100,6 +107,7 @@ def get_matches(udata1: dict, udata2: dict) -> list:
                         else:
                             break
                 else:
+                    # === color layers for both unsigs have only one layer ===
                     if num_layers1 == 1 and num_layers2 == 1:
 
                         layer1 = color_layers1[0]
@@ -108,18 +116,20 @@ def get_matches(udata1: dict, udata2: dict) -> list:
                         mirrored = mirror_layer(layer1, direction)
 
                         if mirrored == layer2:
-                            continue
+                            continue # potential match because mirrored layers are identical
                         else:
                             if side_is_black(layer1, side) and side_is_black(layer2, get_opposite_side(side)):
-                                continue
+                                continue # potential match because both matching sides are black
                             else:
                                 if get_side_value(layer1, side):
                                     if get_side_value(layer1, side) == get_side_value(layer2, get_opposite_side(side)):
-                                        continue
+                                        continue # potential match because both matching sides have identical color values
                                     else:
-                                        break
+                                        break # no match because both matching sides have different color values
                                 else:
-                                    break
+                                    break # no match because side of first color layer has not a single color value
+
+                    # === color layers for unsig have different number of layers but at least one ===
                     else:
                         for layer in color_layers1:
                             rot = layer[2]
@@ -129,23 +139,24 @@ def get_matches(udata1: dict, udata2: dict) -> list:
                                 continue
                             else:
                                 if layer in color_layers2:
-                                    break
+                                    break # match because layers in relevant direction are identical
                                 else:
-                                    continue
+                                    continue # no match because layers in relevant direction are different
                         else:
-                            break
+                            break # break outer loop cause no match found in inner loop
         else:
+            # unsigs match on current side if loop is not interrupted
             matches.append(side)   
 
     return matches   
 
-def get_side_value(layer: tuple, side: str):
+def get_side_value(layer: tuple, side: str) -> int:
+    """Get single color value of given side if existing"""
+
     try:
-        dist = layer[3]
-        rot = layer[2]
-        mult = layer[1]
+        _, mult, rot, dist = layer
     except:
-        return list()
+        return 
     else:
         if dist == "CDF":
             rotations = {
@@ -161,9 +172,9 @@ def get_side_value(layer: tuple, side: str):
             return None
 
 def get_black_sides(layer: tuple) -> list:
+    """Get black sides of given layer"""
     try:
-        dist = layer[3]
-        rot = layer[2]
+        _, _, rot, dist = layer
     except:
         return list()
     else:
@@ -185,12 +196,16 @@ def get_black_sides(layer: tuple) -> list:
             return black_sides
 
 def side_is_black(layer: tuple, side: str) -> bool:
+    """Check if given side of layer is black"""
     black_sides = get_black_sides(layer)
     return True if side in black_sides else False
 
 def mirror_layer(layer: tuple, direction: str) -> tuple:
-    rotation = layer[2]
-    distribution = layer[3]
+    """Change rotation property of given layer if necessary"""
+
+    _, _, rotation, distribution = layer
+
+    # mirrored layer of normal distribution identical with original layer
     if distribution == "Normal":
         return layer
 
@@ -205,36 +220,42 @@ def mirror_layer(layer: tuple, direction: str) -> tuple:
         else:
             new_rotation = 90 if rotation == 270 else 270
 
+    # convert layer to list to change rotation
     new_layer = list(layer)
     new_layer[2] = new_rotation
+
     return tuple(new_layer)
 
 def mirror_layers(layers: list, direction: str) -> list:
-    mirrored = list()
-
-    for layer in layers:
-        mirrored.append(mirror_layer(layer, direction))
+    """Mirror each layer in given direction"""
+    return [mirror_layer(layer, direction) for layer in layers]
     
-    return mirrored
+def rotate_layer(layer: tuple, rotation_diff: int) -> tuple:
+    """Rotate layer by given rotation angle"""
 
-def rotate_layer(layer, rotation_diff: int) -> tuple:
-    distribution = layer[3]
-    rotated = list(layer) 
-    if distribution == "Normal":
-        rotated[2] = (layer[2] + rotation_diff) % 180
-    else:
-        rotated[2] = (layer[2] + rotation_diff) % 360
+    _, _, rotation, distribution = layer
 
-    return tuple(rotated)
+    new_rotation = rotation + rotation_diff
+    new_rotation = new_rotation % 180 if distribution == "Normal" else new_rotation % 360
+    
+    new_layer = list(layer)
+    new_layer[2] = new_rotation
+
+    return tuple(new_layer)
 
 def rotate_layers(layers: list, rotation_diff: str) -> list:
-    rotated = list()
-    for layer in layers:
-        rotated.append(rotate_layer(layer, rotation_diff))
-    return rotated
+    """Rotate each layer by given rotation angle"""
+    return [rotate_layer(layer, rotation_diff) for layer in layers]
+ 
+def get_similar_unsigs(number: str, numbers: List[int], structural: Optional[bool] = True) -> dict:
+    """
+    Get all unsigs from list which look similar to given unsig.
 
+    Options:
+        - get unsigs with axial / point symmetry
+        - get unsigs with structural similarity (structural=True)
+    """
 
-def get_similar_unsigs(number: str, numbers: List[int], structural=True) -> dict:
     unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     similar_unsigs = defaultdict(list)
@@ -250,6 +271,7 @@ def get_similar_unsigs(number: str, numbers: List[int], structural=True) -> dict
         if idx!=num:
             u2 = unsigs.get(str(num))
             num2_props = u2.get("num_props") 
+
             if num1_props != num2_props:
                 continue
             else:
@@ -259,7 +281,8 @@ def get_similar_unsigs(number: str, numbers: List[int], structural=True) -> dict
     
     return similar_unsigs
 
-def check_similarity(u1_data, u2_data, structural=True):
+def check_similarity(u1_data: dict, u2_data: dict, structural: Optional[bool] = True) -> str:
+    """Check similarity between two unsigs regarding symmetry and structural similarity (optional)"""
 
     layers1 = get_prop_layers(u1_data)
     layers2 = get_prop_layers(u2_data)
@@ -274,34 +297,35 @@ def check_similarity(u1_data, u2_data, structural=True):
         if check_structural_similarity(layers1, layers2):
             return "structural_similarity"
 
-def check_axial_symmetry(layers1, layers2):
-    directions = ["horizontal", "vertical"]
-    
+def check_axial_symmetry(layers1: list, layers2: list) -> bool:
 
-    for direction in directions:
+    for direction in ["horizontal", "vertical"]:
         mirrored = mirror_layers(layers1, direction)
         if sorted(mirrored) == sorted(layers2):
             return True
     else:
         return False 
 
-def check_point_symmetry(layers1, layers2):
-    rotations = [90, 180, 270]
+def check_point_symmetry(layers1: list, layers2: list) -> bool:
 
-    for rotation in rotations:
+    for rotation in [90, 180, 270]:
         rotated = rotate_layers(layers1, rotation)
         if sorted(rotated) == sorted(layers2):
             return True
 
+        # check for combined point and axial symmetry
         mirrored = mirror_layers(rotated, "vertical")    
         if sorted(mirrored) == sorted(layers2):
             return True        
     else:
         return False
 
-def check_structural_similarity(layers1, layers2):
+def check_structural_similarity(layers1: list, layers2: list) -> bool:
+    """Check if layers of two unsigs are similar regarding their subpattern"""
 
-    def check(layers1, layers2):
+    def check(layers1: list, layers2: list) -> bool: 
+        """Check if given unsigs consist of identical subpattern"""
+
         subpattern1 = get_subpattern(layers1)
         subpattern2 = get_subpattern(layers2)
 
@@ -315,9 +339,8 @@ def check_structural_similarity(layers1, layers2):
         else:
             return False
 
-    rotations = [0, 90, 180, 270]
 
-    for rotation in rotations:
+    for rotation in [0, 90, 180, 270]:
         rotated = rotate_layers(layers1, rotation)
         if check(rotated, layers2):
             return True
@@ -326,24 +349,21 @@ def check_structural_similarity(layers1, layers2):
         if check(rotated_mirrored, layers2):
             return True     
     
-    directions = ["horizontal", "vertical"]
-
-    for direction in directions:
+    for direction in ["horizontal", "vertical"]:
         mirrored = mirror_layers(layers1, direction)
         if check(mirrored, layers2):
             return True
 
-def get_subpattern_mutations(subpattern):
+def get_subpattern_mutations(subpattern: dict) -> list:
+    """Get rotated variations of given subpattern"""
 
     flattened = format_subpattern(subpattern)
     mutations = [flattened]
     
-    rotation = 180
-    
-    for i,layers in enumerate(flattened):
-        copied_layers = flattened[:]
+    for i, layers in enumerate(flattened):
+        copied_layers = flattened[:] # copy original layers
 
-        rotated = rotate_layers(layers, rotation)
+        rotated = rotate_layers(layers, 180)
         copied_layers[i] = rotated
         formatted = [tuple(sorted(layers)) for layers in copied_layers]
         mutations.append(formatted)
@@ -351,9 +371,10 @@ def get_subpattern_mutations(subpattern):
     return mutations
 
 def save_matches_to_file(number: str, matches: dict) -> str:
-    """Return path where text file is located"""
+    """Save matches for given unsig to text file and return path"""
     
     path = f"{ROOT_DIR}/data/matches_{str(number).zfill(5)}.txt"
+
     with open(path, 'w') as f:
         f.write(f"Matches for unsig{str(number).zfill(5)}\n")
 

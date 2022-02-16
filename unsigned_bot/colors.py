@@ -1,5 +1,15 @@
 """
-Module for colors functionalities
+Module for colors functionalities.
+
+All colors in collection are divided into 64 groups* by splitting up RGB values into 4 ranges: 
+{
+    "0-63": 0, 
+    "64-127": 64, 
+    "128-191": 128, 
+    "192-255": 192
+}
+
+*4 ranges x 3 (R, G, B) = 64 color groups
 """
 
 import math
@@ -9,8 +19,10 @@ import re
 from unsigned_bot.utility.files_util import load_json
 from unsigned_bot import ROOT_DIR
 
+# calculations based on pixel count
 TOTAL_PIXELS = 16384
 
+# cumulative pixel amount in entire collection
 PIXELS_COLORS = {
     (0, 0, 0): 30733152,
     (0, 0, 64): 11027495,
@@ -78,6 +90,7 @@ PIXELS_COLORS = {
     (192, 192, 192): 9960371
 }
 
+# shares of colors related to cumulative pixel amounts
 PIXEL_PERCENTAGES = {
     (0, 0, 0): 0.060278374445676276,
     (0, 0, 64): 0.02162874386616195,
@@ -145,6 +158,7 @@ PIXEL_PERCENTAGES = {
     (192, 192, 192): 0.019535743445900214
 }
 
+# shares normalized to most occuring color (0, 0, 0)
 PERCENTAGES_NORMALIZED = {
     (0, 0, 0): 1.0,
     (0, 0, 64): 0.35881431881767284,
@@ -212,6 +226,7 @@ PERCENTAGES_NORMALIZED = {
     (192, 192, 192): 0.3240920749033487
 }
 
+# ranking based on normalized percentages
 COLOR_RANKING = {
     (0, 0, 0): 64,
     (0, 0, 64): 57,
@@ -285,38 +300,48 @@ green = [0,0,0,0,64,64,64,64,128,128,128,128,192,192,192,192,0,0,0,0,64,64,64,64
 blue = [0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192,0,64,128,192]
 
 COLOR_KEYS = list(zip(red, green, blue)) 
-
 COLOR_HEX_URL = "https://www.color-hex.com"
 
-def step (r,g,b, repetitions=1):
-    lum = math.sqrt( .241 * r + .691 * g + .068 * b )
+
+def step(r: int, g: int, b: int, repetitions=1) -> tuple:
+    """
+    Helper function to generate step sorted color diagram.
+    Credits go to: https://www.alanzucconi.com/2015/09/30/colour-sorting/
+    """
+
+    lum = math.sqrt( .241 * r + .691 * g + .068 * b ) # weighting by luminosity
     h, s, v = colorsys.rgb_to_hsv(r,g,b)
     h2 = int(h * repetitions)
     v2 = int(v * repetitions)
     if h2 % 2 == 1:
         v2 = repetitions - v2
         lum = repetitions - lum
+
     return (h2, lum, v2)
 
+# calculate step sorted colours upfront
 COLORS_SORTED = sorted(COLOR_KEYS, key=lambda rgb: step(rgb[0],rgb[1],rgb[2],8))
 
 
-def rgb_2_hex(rgb: tuple):
+def rgb_2_hex(rgb: tuple) -> str:
     return "#{:02x}{:02x}{:02x}".format(*rgb)
 
 def get_color_frequencies(idx: str) -> dict:
+    """Load color frequency data from file and convert tuple strings to tuples"""
     unsigs_colors = load_json(f"{ROOT_DIR}/data/json/color_frequencies.json")
     color_frequencies = unsigs_colors.get(str(idx))
     return {tuple([int(n) for n in re.findall('[0-9]+', k)]): v for k,v in color_frequencies.items()}
 
 def get_total_colors(color_frequencies: dict) -> int:
+    """Count total amount of colors"""
     return len([p for p in color_frequencies.values() if p])
 
-def get_top_colors(color_frequencies: dict, num_ranks=10):
+def get_top_colors(color_frequencies: dict, num_ranks=10) -> dict:
+    """Return ranking of colors which occur most often in an unsig"""
     colors_sorted = sorted(color_frequencies.items(), key=lambda x: x[1], reverse=True)
     return {k: v/TOTAL_PIXELS for k,v in dict(colors_sorted[:num_ranks]).items() if v != 0}
 
-def link_hex_color(color_hex):
+def link_hex_color(color_hex: str) -> str:
     color_hex = color_hex.replace("#", "")
     return f"{COLOR_HEX_URL}/color/{color_hex}"
 
@@ -327,11 +352,10 @@ def get_max_percentage(percentages: dict) -> float:
     return max(percentages.values())
 
 def calc_color_rarity(color_frequencies: dict) -> float:
+    """
+    Return rarity value normalized to 64.
+    Value ascending from 0 (most rare) to 64 (most common).
+    """
     percentages = calc_pixel_percentages(color_frequencies)
     weighted_rarity = [PERCENTAGES_NORMALIZED.get(k) * v * 64 for k,v in percentages.items()]
     return sum(weighted_rarity)
-
-
-
-
-

@@ -21,6 +21,7 @@ load_dotenv()
 
 TOKEN = os.getenv('BOT_TOKEN')
 
+
 # === initialize bot variables ===
 bot = commands.Bot(command_prefix='!', help_command=None)
 bot.sales = load_json("data/json/sales.json")

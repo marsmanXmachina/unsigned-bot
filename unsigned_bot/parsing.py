@@ -15,6 +15,7 @@ from unsigned_bot import ROOT_DIR
 
 
 def get_asset_id(asset_name: str) -> str:
+    """Load asset id from file for asset"""
     asset_ids = load_json(f"{ROOT_DIR}/data/json/asset_ids.json")
     return asset_ids.get(asset_name, None)
 
@@ -36,6 +37,7 @@ def get_idx_from_asset_name(asset_name: str) -> int:
         return int(number)
 
 def get_numbers_from_assets(assets: list) -> list:
+    """Extract numbers of unsigs from given list"""
     return [get_idx_from_asset_name(asset.get("assetid")) for asset in assets]
 
 def get_asset_name_from_minting_order(idx:str) -> str:
@@ -52,6 +54,7 @@ def get_numbers_from_string(string):
     return re.findall(r"\d+", string)
 
 def get_asset_from_number(number, assets: list) -> dict:
+    """Find asset by number in given list"""
     for asset in assets:
         asset_number = asset.get("assetid").replace("unsig", "")
 
@@ -59,6 +62,7 @@ def get_asset_from_number(number, assets: list) -> dict:
             return asset
 
 def order_by_num_props(assets: list) -> dict:
+    """Order unsigs by number of properties"""
     ordered = defaultdict(list)
 
     for asset in assets:
@@ -68,6 +72,7 @@ def order_by_num_props(assets: list) -> dict:
     return ordered
 
 def get_certificate_data_by_number(number, certificates: dict) -> dict:
+    """Try to find certificate data by given unsig number"""
     for _, data in certificates.items():
         metadata = data.get("onchain_metadata")
 
@@ -108,6 +113,7 @@ def get_unsig_url(number: str):
     return f"{UNSIGS_URL}/details/{str(number).zfill(5)}"
 
 def get_url_from_marketplace_id(marketplace_id: str, marketplace="cnft") -> str:
+    """Get url to unsig on marketplace."""
     if marketplace == "cnft":
         return f"{CNFT_URL}/token/{marketplace_id}"
     if marketplace == "tokhun":
@@ -116,6 +122,7 @@ def get_url_from_marketplace_id(marketplace_id: str, marketplace="cnft") -> str:
         return f"{JPGSTORE_URL}/asset/{marketplace_id}"
 
 def link_asset_to_marketplace(number: str, marketplace_id: str, marketplace: str) -> str:
+    """Generate string to link unsig to marketplace"""
     url = get_url_from_marketplace_id(marketplace_id, marketplace)
     return f" [#{str(number).zfill(5)}]({url}) "
 
@@ -131,6 +138,8 @@ def link_assets_to_grid(numbers: list, cols: int) -> str:
     return assets_str
 
 def unsig_exists(number: str) -> bool:
+    """Check if unsig with given number exists"""
+
     try:
         if int(number) < MAX_AMOUNT and int(number) >= 0:
             return True
@@ -140,6 +149,8 @@ def unsig_exists(number: str) -> bool:
         return False
 
 def parse_sale(sale_data: dict) -> tuple:
+    """Exctract relevant data from sale data"""
+
     marketplace_name = sale_data.get("assetid")
     num_props = sale_data.get("num_props")
 
@@ -152,6 +163,8 @@ def parse_sale(sale_data: dict) -> tuple:
     return (marketplace_name, num_props, price, date)
 
 def add_num_props(assets: list) -> list:
+    """Load unsigs data from file and add number of properties to each unsig"""
+
     unsigs = load_json(f"{ROOT_DIR}/data/json/unsigs.json")
 
     for asset in assets:

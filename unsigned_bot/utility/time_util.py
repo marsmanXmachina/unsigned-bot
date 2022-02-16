@@ -12,7 +12,7 @@ INVERVALS_IN_DAYS = {
     "month": 30,
 }
 
-def timestamp_to_datetime(timestamp_ms):
+def timestamp_to_datetime(timestamp_ms: int):
     dt = datetime.utcfromtimestamp(timestamp_ms/1000)
     return dt
 
@@ -25,6 +25,6 @@ def get_interval_from_period(period: str) -> int:
         return 0
 
 def datetime_to_timestamp(datetime_str: str) -> int:
-    """Return timestamp in milliseconds"""
+    """Parse datetime string and return timestamp in milliseconds"""
     date = parser.parse(datetime_str)
     return int(datetime.timestamp(date) * 1000)

@@ -1,9 +1,9 @@
 """
-Module for communication with Twitter API
+Module for communication with Twitter API.
+Twitter handle: @unsigned_bot
 """
 
 import os
-import requests
 import tweepy
 
 from unsigned_bot import IMAGE_PATH
@@ -16,7 +16,9 @@ from dotenv import load_dotenv
 load_dotenv() 
 
 
-def create_twitter_api():
+def create_twitter_api() -> tweepy.API:
+    """Verify access to twitter API."""
+
     consumer_key = os.getenv("CONSUMER_KEY")
     consumer_secret = os.getenv("CONSUMER_SECRET")
     access_token = os.getenv("ACCESS_TOKEN")
@@ -34,7 +36,12 @@ def create_twitter_api():
 
     return api
 
-async def tweet_sales(api, sales):
+async def tweet_sales(api: tweepy.API, sales: list):
+    """
+    Post recent sold assets on twitter.
+    Generate image of unsig and add to tweet.
+    """
+
     for sale in sales:
         marketplace_name, num_props, price, date = parse_sale(sale)
         unsig_number = get_idx_from_asset_name(marketplace_name)
@@ -47,20 +54,9 @@ async def tweet_sales(api, sales):
 
             media_img = api.media_upload(filename=filepath_image)
             api.update_status(status=tweet_string, media_ids=[media_img.media_id])
-
         except:
             tweet_string += f"\n{unsig_url}"
             api.update_status(status=tweet_string)
         finally:
             delete_image_files(IMAGE_PATH, suffix="png")
-
-async def download_image(num, url) -> str:
-    filename = f'img/temp_{num}.png'
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        with open(filename, 'wb') as image:
-            for chunk in response:
-                image.write(chunk)
-    
-    return filename
     

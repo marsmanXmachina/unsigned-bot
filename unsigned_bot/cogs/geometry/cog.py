@@ -113,8 +113,7 @@ class GeometryCog(commands.Cog, name = "Geometry"):
 
         pattern = [first_pattern, second_pattern, third_pattern]
         pattern_for_search = [p for p in pattern if p in SUBPATTERN_NAMES]
-        subs_counted = load_json(f"{ROOT_DIR}/data/json/subs_counted.json")
-        pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
+        pattern_found = filter_subs_by_names(pattern_for_search)
 
         LIMIT_DISPLAY = 9
 

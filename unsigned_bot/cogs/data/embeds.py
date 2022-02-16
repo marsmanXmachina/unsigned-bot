@@ -153,10 +153,8 @@ def add_subpattern(embed: Embed, unsig_data: dict):
 
     embed.add_field(name = f"{EMOJI_DNA} Subpattern {EMOJI_DNA}", value=f"`{subpattern_str}`", inline=False)
 
-    subs_counted = load_json(f"{ROOT_DIR}/data/json/subs_counted.json")
     pattern_for_search = list(subpattern_names.values())
-
-    pattern_found = filter_subs_by_names(subs_counted, pattern_for_search)
+    pattern_found = filter_subs_by_names(pattern_for_search)
     num_pattern = len(pattern_found)
     pattern_formatted = dict(Counter(pattern_for_search))
 

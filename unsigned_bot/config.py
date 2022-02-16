@@ -1,7 +1,12 @@
+"""
+Module for bot config variables
+"""
+
 # === productive config ===
 # GUILD_NAME = "unsigned_algorithms"
 # GUILD_ID = 843043397526093885
 # SALES_CHANNEL_ID = 860188673239416862
+
 
 # == test config ==
 GUILD_NAME = "UnsignedBots"

@@ -17,7 +17,7 @@ MARKETPLACE = "cnft"
 
 
 async def fetch_data_from_marketplace(project_name: str, sold: Optional[bool] = False) -> list:
-    """Fetch assets data by pagination"""
+    """Fetch assets data via pagination and return list of parsed assets"""
     
     url = CNFT_API_URL
 
@@ -124,7 +124,10 @@ def get_data_from_responses(responses: List[dict]) -> list:
     return assets
 
 def parse_data(assets: List[dict], sold: bool = False) -> list:
-    """Return list of parsed assets"""
+    """
+    Extract relevant data from assets.
+    Has to be kept updated along with cnft API.
+    """
 
     parsed = list()
 
@@ -158,4 +161,3 @@ def parse_data(assets: List[dict], sold: bool = False) -> list:
             parsed.append(asset_parsed)
     
     return parsed
-
