@@ -3,7 +3,7 @@
 I'm a discord bot for [unsigned_algorithms](https://twitter.com/unsigned_algo).<br>
 My purpose is to provide you with valuable information about your unsig(s).<br>
 <br> 
-Oh, by the way...I'm build with [Python](https://www.python.org).<br> 
+Oh, by the way...I'm built with [Python](https://www.python.org).<br> 
 Why? Cause Python [makes me fly](https://xkcd.com/353/)!
 
 You can meet me over [there](https://t.co/vFBucZpnLI)...
@@ -50,7 +50,7 @@ I think you got the point...
 # Tomorrow Never Dies
 *Until the world falls away...*<br>
 <br>
-With future missions I will get richer and more powerful.<br>
+With future missions I will get richer in experiences and more powerful.<br>
 Do you have any ideas for my next mission?<br>
 
 # License to Copy
