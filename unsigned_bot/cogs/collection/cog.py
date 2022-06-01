@@ -148,6 +148,58 @@ class CollectionCog(commands.Cog, name="Collection"):
         else:
             await ctx.send(file=image_file, embed=embed)
 
+    @cog_ext.cog_slash(
+        name="range", 
+        description="show a range of unsigs", 
+        guild_ids=GUILD_IDS,
+        options=[
+            create_option(
+                name="start",
+                description="number of the starting unsig",
+                required=True,
+                option_type=3,
+            ),
+            create_option(
+                name="end",
+                description="number of the final unsig",
+                required=True,
+                option_type=3,
+            )
+        ]    
+    )
+    async def _range(self, ctx: SlashContext, start: str, end: str):
+        "show a range of unsigs"
+
+        if not await valid_channel(ctx):
+            return
+        
+        if not await valid_unsig(ctx, start):
+            return
+
+        if not await valid_unsig(ctx, end):
+            return
+
+        # Reasonable number of columns?
+        numbers = range(start, end)
+        columns = math.ceil(math.sqrt(len(numbers)))
+
+        LIMIT_DISPLAY = 20
+        if len(numbers) > LIMIT_DISPLAY:
+            numbers = numbers[:LIMIT_DISPLAY]
+        
+        embed = embed_collection_grid(numbers)
+
+        try:
+            image_path = await gen_grid(numbers, columns)
+            image_file = discord.File(image_path, filename="range.png")
+            embed.set_image(url="attachment://range.png")
+
+            delete_image_files(IMAGE_PATH)
+        except:
+            await ctx.send(content=f"I can't generate that range of unsigs.")
+            return
+        else:
+            await ctx.send(file=image_file, embed=embed)
 
 def setup(bot: commands.Bot):
     bot.add_cog(CollectionCog(bot))
